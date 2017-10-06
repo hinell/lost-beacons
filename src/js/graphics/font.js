@@ -1,196 +1,196 @@
 var defs = {
-    nomangle(a): matrix([
+    'a': [
         [1,1,1],
         [1,0,1],
         [1,1,1],
         [1,0,1],
         [1,0,1]
-    ]),
-    nomangle(b): matrix([
+    ],
+    'b': [
         [1,1,1],
         [1,0,1],
         [1,1,0],
         [1,0,1],
         [1,1,1]
-    ]),
-    nomangle(c): matrix([
+    ],
+    'c': [
         [1,1,1],
         [1,0,0],
         [1,0,0],
         [1,0,0],
         [1,1,1]
-    ]),
-    nomangle(d): matrix([
+    ],
+    'd': [
         [1,1,0],
         [1,0,1],
         [1,0,1],
         [1,0,1],
         [1,1,1]
-    ]),
-    nomangle(e): matrix([
+    ],
+    'e': [
         [1,1,1],
         [1,0,0],
         [1,1,0],
         [1,0,0],
         [1,1,1]
-    ]),
-    nomangle(f): matrix([
+    ],
+    'f': [
         [1,1,1],
         [1,0,0],
         [1,1,0],
         [1,0,0],
         [1,0,0]
-    ]),
-    nomangle(g): matrix([
+    ],
+    'g': [
         [1,1,1],
         [1,0,0],
         [1,0,0],
         [1,0,1],
         [1,1,1]
-    ]),
-    nomangle(h): matrix([
+    ],
+    'h': [
         [1,0,1],
         [1,0,1],
         [1,1,1],
         [1,0,1],
         [1,0,1]
-    ]),
-    nomangle(i): matrix([
+    ],
+    'i': [
         [1,1,1],
         [0,1,0],
         [0,1,0],
         [0,1,0],
         [1,1,1]
-    ]),
-    nomangle(j): [
+    ],
+    'j': [
         [0,0,1],
         [0,0,1],
         [0,0,1],
         [1,0,1],
         [1,1,1]
     ],
-    nomangle(k): matrix([
+    'k': [
         [1,0,1],
         [1,0,1],
         [1,1,0],
         [1,0,1],
         [1,0,1]
-    ]),
-    nomangle(l): matrix([
+    ],
+    'l': [
         [1,0,0],
         [1,0,0],
         [1,0,0],
         [1,0,0],
         [1,1,1]
-    ]),
-    nomangle(m): matrix([
+    ],
+    'm': [
         [1,0,1],
         [1,1,1],
         [1,0,1],
         [1,0,1],
         [1,0,1]
-    ]),
-    nomangle(n): matrix([
+    ],
+    'n': [
         [1,1,1],
         [1,0,1],
         [1,0,1],
         [1,0,1],
         [1,0,1]
-    ]),
-    nomangle(o): matrix([
+    ],
+    'o': [
         [1,1,1],
         [1,0,1],
         [1,0,1],
         [1,0,1],
         [1,1,1]
-    ]),
-    nomangle(p): matrix([
+    ],
+    'p': [
         [1,1,1],
         [1,0,1],
         [1,1,1],
         [1,0,0],
         [1,0,0]
-    ]),
-    nomangle(q): matrix([
+    ],
+    'q': [
         [1,1,1],
         [1,0,1],
         [1,0,1],
         [1,1,1],
         [0,0,1]
-    ]),
-    nomangle(r): matrix([
+    ],
+    'r': [
         [1,1,1],
         [1,0,1],
         [1,1,0],
         [1,0,1],
         [1,0,1]
-    ]),
-    nomangle(s): matrix([
+    ],
+    's': [
         [1,1,1],
         [1,0,0],
         [1,1,1],
         [0,0,1],
         [1,1,1]
-    ]),
-    nomangle(t): matrix([
+    ],
+    't': [
         [1,1,1],
         [0,1,0],
         [0,1,0],
         [0,1,0],
         [0,1,0]
-    ]),
-    nomangle(u): matrix([
+    ],
+    'u': [
         [1,0,1],
         [1,0,1],
         [1,0,1],
         [1,0,1],
         [1,1,1]
-    ]),
-    nomangle(v): matrix([
+    ],
+    'v': [
         [1,0,1],
         [1,0,1],
         [1,0,1],
         [1,0,1],
         [0,1,0]
-    ]),
-    nomangle(w): matrix([
+    ],
+    'w': [
         [1,0,1,0,1],
         [1,0,1,0,1],
         [1,0,1,0,1],
         [1,0,1,0,1],
         [0,1,0,1,0]
-    ]),
-    nomangle(x): matrix([
+    ],
+    'x': [
         [1,0,1],
         [1,0,1],
         [0,1,0],
         [1,0,1],
         [1,0,1]
-    ]),
-    nomangle(y): matrix([
+    ],
+    'y': [
         [1,0,1],
         [1,0,1],
         [1,1,1],
         [0,1,0],
         [0,1,0]
-    ]),
-    /*'\'': matrix([
+    ],
+    /*'\'': [
         [1]
-    ]),*/
-    '.': matrix([
+    ],*/
+    '.': [
         [0],
         [0],
         [0],
         [0],
         [1]
-    ]),
-    ' ': matrix([
+    ],
+    ' ': [
         [0,0],
         [0,0],
         [0,0],
         [0,0],
         [0,0]
-    ]),
+    ],
     '-': [
         [0,0],
         [0,0],
@@ -198,126 +198,157 @@ var defs = {
         [0,0],
         [0,0]
     ],
-    ':': matrix([
+    ':': [
         [0],
         [1],
         [ ],
         [1],
         [ ]
-    ]),
-    '?': matrix([
+    ],
+    '?': [
         [1,1,1],
         [1,1,1],
         [1,1,1],
         [1,1,1],
         [1,1,1]
-    ]),
-    '!': matrix([
+    ],
+    '!': [
         [0,1,0,1,0],
         [1,1,1,1,1],
         [1,1,1,1,1],
         [0,1,1,1,0],
         [0,0,1,0,0]
-    ]),
-    '/': matrix([
+    ],
+    '/': [
         [0,0,1],
         [0,0,1],
         [0,1,0],
         [1,0,0],
         [1,0,0]
-    ]),
-    '1': matrix([
+    ],
+    '1': [
         [1,1,0],
         [0,1,0],
         [0,1,0],
         [0,1,0],
         [1,1,1]
-    ]),
-    '2': matrix([
+    ],
+    '2': [
         [1,1,1],
         [0,0,1],
         [1,1,1],
         [1,0,0],
         [1,1,1]
-    ]),
-    '3': matrix([
+    ],
+    '3': [
         [1,1,1],
         [0,0,1],
         [0,1,1],
         [0,0,1],
         [1,1,1]
-    ]),
-    '4': matrix([
+    ],
+    '4': [
         [1,0,0],
         [1,0,0],
         [1,0,1],
         [1,1,1],
         [0,0,1]
-    ]),
-    '5': matrix([
+    ],
+    '5': [
         [1,1,1],
         [1,0,0],
         [1,1,0],
         [0,0,1],
         [1,1,0]
-    ]),
-    '6': matrix([
+    ],
+    '6': [
         [1,1,1],
         [1,0,0],
         [1,1,1],
         [1,0,1],
         [1,1,1]
-    ]),
-    '7': matrix([
+    ],
+    '7': [
         [1,1,1],
         [0,0,1],
         [0,1,0],
         [0,1,0],
         [0,1,0]
-    ]),
-    '8': matrix([
+    ],
+    '8': [
         [1,1,1],
         [1,0,1],
         [1,1,1],
         [1,0,1],
         [1,1,1]
-    ]),
-    '9': matrix([
+    ],
+    '9': [
         [1,1,1],
         [1,0,1],
         [1,1,1],
         [0,0,1],
         [1,1,1]
-    ]),
-    '0': matrix([
+    ],
+    '0': [
         [1,1,1],
         [1,0,1],
         [1,0,1],
         [1,0,1],
         [1,1,1]
-    ]),
-    '(': matrix([
+    ],
+    '(': [
         [0,1],
         [1],
         [1],
         [1],
         [0,1]
-    ]),
-    ')': matrix([
+    ],
+    ')': [
+        [1],
+        [0,1],
+        [0,1],
+        [0,1],
+        [1]
+    ],
+    '[': [
+        [1,1],
+        [1],
+        [1],
+        [1],
+        [1,1]
+    ],
+    ']': [
+        [1,1],
+        [0,1],
+        [0,1],
+        [0,1],
+        [1,1]
+    ],
+    '': [
         [1, 0],
         [0, 1],
         [0, 1],
         [0, 1],
         [1]
-    ]),
-    '#': matrix([
+    ],
+    '#': [
         [0, 1, 0, 1, 0],
         [1, 1, 1, 1, 1],
         [0, 1, 0, 1, 0],
         [1, 1, 1, 1, 1],
         [0, 1, 0, 1, 0]
-    ])
+    ],
+    '+': [
+        [0, 0, 1, 0, 0],
+        [0, 0, 1, 0, 0],
+        [1, 1, 1, 1, 1],
+        [0, 0, 1, 0, 0],
+        [0, 0, 1, 0, 0]
+    ]
 };
+
+Object.keys(defs).forEach(key => defs[key.toLocaleUpperCase()] = defs[key] )
+
 
 if(DEBUG){
     (function() {
@@ -342,21 +373,22 @@ if(DEBUG){
 // t: text
 // x: x coord
 // y: y coord
-// s: cell size
+// s: shadow offset
 // c: color
-function drawText(t, x, y, s, c, sh) {
+// sh: render shadow
+function drawText(text, x, y, shadowOffset, color, sh) {
     if (sh) {
-        drawText(t, x, y + s, s, '#000');
+        drawText(text, x, y + shadowOffset , shadowOffset, '#000');
     }
 
-    for(var i = 0 ; i < t.length ; i++){
+    for(var i = 0 ; i < text.length ; i++){
         if (DEBUG) {
-            window.used[t.charAt(i)] = true;
+            window.used[text.charAt(i)] = true;
         }
 
-        const cached = cachedCharacter(t.charAt(i), s, c);
+        const cached = cachedCharacter(text.charAt(i), shadowOffset, color);
         R.drawImage(cached, x, y);
-        x += cached.width + s;
+        x += cached.width + shadowOffset;
     }
 }
 
@@ -368,26 +400,36 @@ function drawCenteredText(t, x, y, s, c, sh) {
 function requiredCells(t) {
     t = t || '';
 
-    const r = 0;
-    for(var i = 0 ; i < t.length ; i++){
-        r += defs[t.charAt(i)][0].length + 1;
+    let r = 0;
+    for(var i = 0 ; i < t.length ; i++) {
+        let charDef = defs[t.charAt(i)];
+        if(!charDef) { charDef = defs[''] }
+        r += charDef[0].length + 1;
     }
     return r - 1;
 }
 
-const cachedChars = {};
+const cachedChars = new Map();
+
+// Optimized by using for () loop instead of .forEach()
 function cachedCharacter(t, s, c){
-    const key = t + s + c;
-    const def = defs[t];
-    cachedChars[key] = cachedChars[key] || cache(def[0].length * s, def.length * s, function(r) {
+    let key = t + s + c;
+    let charDef = defs[t];
+    if(!charDef) { charDef = defs[''] }
+    let constChar = cachedChars.get(key);
+    if(constChar){ return constChar }
+
+     constChar = cache(charDef[0].length * s, charDef.length * s, function(r) {
         r.fillStyle = c;
-        def.forEach((y, row) => {
-            y.forEach((x, col) => {
-                if (x) {
-                    r.fr(col * s, row * s, s, s);
-                }
-            });
-        });
+       let row,col, y, x;
+       for (row = 0; row < charDef.length; row++) {
+         y = charDef[row];
+         for (col = 0 ; col < y.length; col++) {
+            x = y[col];
+            if(x) { r.fr(col * s, row * s, s, s);  }
+         }
+       }
     });
-    return cachedChars[key];
+    cachedChars.set(key, constChar);
+    return constChar
 }
