@@ -1,39 +1,98 @@
-class Unit {
+class Units extends Objects {}
 
-    constructor() {
+UNIT_SPEED              =  150;
+UNIT_ANGULAR_SPEED      =  Math.PI / 360;
+UNIT_RADIUS             =  20;
+UNIT_ATTACK_RADIUS      =  200;
+UNIT_HEAL_RADIUS        =  100;
+UNIT_PX_SIZE            =  3;
+UNIT_SHOT_INTERVAL      =  0.8;
+UNIT_SHOT_DAMAGE        =  0.25;
+
+UNIT_HEALING_AMOUNT     =  0.05;
+UNIT_HEALING_INTERVAL   =  1.5;
+
+const ALL_REPLIES   = [
+            'our domination will last forever'
+        ,   'the victory is coming'
+        ,   'beacon is our'
+        ,   'conquer them all'
+        ,   'well done'
+        ,   'good job'
+        ,   'keep going'
+        ,   'unleash the power'
+        ]
+
+class Unit extends Object_ {
+    constructor(cfg = {}) {
+        super()
+        // shooting settings
+        this.damageAmount = cfg.damageAmount        || UNIT_SHOT_DAMAGE;
+        this.shotInterval = cfg.shotInterval        || UNIT_SHOT_INTERVAL;
+        this.attackRadius = cfg.attackRadius        || UNIT_ATTACK_RADIUS;
+        this.shotTimer    = this.shotInterval;
+        
+        // healing settings
+        this.healingInterval = cfg.healingInterval  || UNIT_HEALING_INTERVAL
+        this.healTimer       = this.healingInterval;
+        this.healingAmount= cfg.healingAmount|| UNIT_HEALING_AMOUNT
+        this.healRadius   = cfg.healRadius   || UNIT_HEAL_RADIUS;
+        
+        this.unitSpeed    = cfg.unitSpeed    || UNIT_SPEED
+        this.angularSpeed = cfg.angularSpeed || UNIT_ANGULAR_SPEED
+        
+        this.radius       = cfg.radius       || UNIT_RADIUS
+        
+        this.beacon       = null // parental beacon, only available after spawn
+        
+        this.visibilityRadius = Math.max(this.healRadius,this.attackRadius);
+      
+
         // Might be able to gut these if they're set from the outside
-        // this.x = 0;
-        // this.y = 0;
         // this.team = PLAYER_TEAM;
         // this.target = null;
 
         this.angle = 0;
         this.moving = false;
-
-        this.health = 1;
-
+        this.healthSize = this.health = 1;
+      
         this.setBehavior(new Idle());
 
-        this.nextShot = rand(0.2, 1);
+        this.shotTimer = rand(0.2,1);
 
         this.indicator = new Indicator(this);
+        // rename to replies
+        
+      
+        this.replies       = cfg.replies || ALL_REPLIES
+        this.cycleTimer    = this.cycleInterval = 1;
+        this.cacheTimer    = this.cacheInterval =this.cycleInterval * 2;
+        this.closestUnits  = [] // cached units
     }
 
+    get dps () { return this.health }
+    
     get dead() {
         return !this.health;
     }
+    
+    get name() {  return this.constructor._name || this.constructor.name.toLocaleLowerCase() }
 
     hurt(amount) {
         if ((this.health -= amount) < 0.1) {
             this.health = 0;
         }
-
-        if (this.team == PLAYER_TEAM) {
-            this.indicator.indicate(nomangle('unit under attack'), ENEMY_TEAM.beacon);
+        if (this.target) {
+          if (this.target.team === this.team) {
+            this.indicator.indicate('engaging enemy!',PLAYER_TEAM.beacon)
+          } else {
+            this.target.indicator.indicate('unit under attack!',ENEMY_TEAM.beacon);
+          }
+          
         }
 
-        let particles = 1;
-
+        let particles = 1
+        
         if (this.dead) {
             W.remove(this);
             particles = 20;
@@ -68,94 +127,129 @@ class Unit {
 
     heal(amount) {
         if (!this.dead) {
-            this.health = min(1, this.health + amount);
+            this.health = min(this.healthSize, this.health + amount);
         }
     }
+    
 
-    closestVisibleTarget() {
-        return W.units
-            .filter(c => c.team != this.team)
-            .filter(c => dist(c, this) < UNIT_ATTACK_RADIUS)
+    enemyInRange() {
+        // this.enemies ???
+        // this.collection = currentMapSector
+        return this.closestUnits
+            .filter(c => c.team !== this.team)
+            .at(this, this.attackRadius)
             .filter(c => !W.hasObstacleBetween(this, c))
             .sort((a, b) => dist(this, a) - dist(this, b))
             [0];
+    }
+    
+    closestWeakFriend() {
+      return this.closestUnits
+        .filter(unit => unit.team === this.team) // this.controller
+        .at(this, this.healRadius)
+        .filter(u => u.health < u.healthSize)
+        .filter(unit => !W.hasObstacleBetween(this, unit))
+        .sort((a, b) => dist(this, a) - dist(this, b))
+        [0];
     }
 
     cycle(e) {
         this.moving = false;
         this.behavior.cycle(e);
+        
 
-        if (!this.moving && this.target && !this.target.dead) {
-            this.angle = angleBetween(this, this.target);
+        if (this.moving) { return }
+        // if no enemy then heal friend
+        
+        if (this.target === this) { this.target = null; return }
+        
+        if ((this.cacheTimer-= e) < this.cacheInterval) {
+            this.cacheTimer = this.cacheInterval
+            this.closestUnits = this.collection.at(this,this.attackRadius)
         }
-
-        const healing = this.target && this.target.team == this.team;
-
-        if (!this.moving && (this.nextShot -= e) <= 0) {
-            this.nextShot = UNIT_SHOT_INTERVAL;
-
-            // If the target is dead or not accessible, we can't do the action on it
-            const notActionable = !this.target ||
-                this.target.dead ||
-                dist(this, this.target) > (healing ? UNIT_HEAL_RADIUS : UNIT_ATTACK_RADIUS) ||
-                W.hasObstacleBetween(this, this.target);
-
-            if (healing) {
-                // Healing a friendly unit
-
-                if (this.target.health == 1 || this.target == this) {
-                    // stop healing, target is already at full health (and allows us to start shooting at another target)
-                    this.target = null;
-                } else if (!notActionable) {
-                    const target = this.target;
-
-                    const p = {
-                        'progress': 0,
-                        'postRender': () => {
-                            translate(this.x + p.progress * (target.x - this.x), this.y + p.progress * (target.y - this.y));
-
-                            R.fillStyle = this.team.beacon;
-                            fr(-2, -6, 4, 12);
-                            fr(-6, -2, 12, 4);
-                        }
-                    };
-
-                    W.add(p, RENDERABLE);
-
-                    interp(p, 'progress', 0, 1, dist(this, this.target) / 100, 0, null, () => {
-                        target.heal(UNIT_HEALING_AMOUNT);
-                        W.remove(p);
-                    });
-                }
-
+        
+        // main cycle
+        if ((this.cycleTimer-= e) < this.cycleInterval && !this.target) {
+            this.cycleTimer = this.cycleInterval;
+             // the next target to be slaughtered or healed
+            this.target     = this.enemyInRange() || this.closestWeakFriend()
+            
+        }
+        
+        // if still no target - return
+        if(!this.target) { return }
+        
+        if (this.target) { this.angle = angleBetween(this, this.target) }
+        
+        this.friendly = this.target.team === this.team
+        
+        if (this.friendly
+            && (this.healTimer-= e) <= 0
+            && !W.hasObstacleBetween(this,this.target)
+            && dist(this,this.target) < this.healRadius) {
+            this.healTimer = this.healingInterval;
+            // Healing a friendly unit
+            if (this.target.health >= this.target.healthSize) {
+                // stop healing, target is already at full health (and allows us to start shooting at another target)
+                this.target = null;
             } else {
-                // Shooting
+                const target = this.target;
 
-                if (notActionable) {
-                    // Pick a different target if the current one isn't available
-                    this.target = this.closestVisibleTarget();
-                }
+                const p = {
+                    x : this.x,
+                    y : this.y,
+                    'progress': 0,
+                    'postRender': () => {
+                        translate(this.x + p.progress * (target.x - this.x), this.y + p.progress * (target.y - this.y));
 
-                if (this.target) {
-                    const view = {
-                        'alpha': 1,
-                        'render': () => {
-                            R.globalAlpha = this.alpha;
-                            R.strokeStyle = '#ff0';
-                            R.lineWidth = 0.5;
-                            beginPath();
-                            moveTo(this.x, this.y);
-                            lineTo(this.target.x, this.target.y);
-                            stroke();
-                        }
-                    };
-                    W.add(view, RENDERABLE);
+                        R.fillStyle = this.team.beacon;
+                        fr(-2, -6, 4, 12);
+                        fr(-6, -2, 12, 4);
+                    }
+                };
 
-                    interp(view, 'alpha', 0.5, 0, 0.1, 0, null, () => W.remove(view));
+                W.add(p, RENDERABLE);
 
-                    this.target.hurt(SHOT_DAMAGE);
-                }
+                interp(p, 'progress', 0, 1, dist(this, this.target) / 100, 0, null, () => {
+                    target.heal(this.healingAmount);
+                    W.remove(p);
+                });
             }
+
+        }
+        if (!this.friendly && (this.shotTimer -= e) <= 0
+            && !W.hasObstacleBetween(this,this.target)
+            && dist(this,this.target) < this.attackRadius) {
+            this.shotTimer = this.shotInterval;
+            
+            if (this.target && this.target.dead ) {
+                this.target = null
+            } else {
+
+                let endPoint  = {x: this.target.x, y: this.target.y}
+               // rays of fire
+                const healthSign = {
+                  x       : this.x,
+                  y       : this.y,
+                  'alpha' : 1,
+                  'render': () => {
+                    R.globalAlpha = rand(0.5,1);
+                    R.strokeStyle = pick([
+                        '#ff0'
+                        ,'#ff6300'
+                        ]);
+                    R.lineWidth   = 0.5;
+                    beginPath();
+                    moveTo(this.x,this.y);
+                    lineTo(endPoint.x,endPoint.y);
+                    stroke();
+                  }
+                };
+                W.add(healthSign,RENDERABLE);
+                interp(healthSign,'alpha',0.5,0,0.1,0,null,() => W.remove(healthSign));
+                this.target.hurt(this.damageAmount);
+            }
+
         }
     }
 
@@ -211,8 +305,8 @@ class Unit {
 
         // Gun
         R.fillStyle = '#000';
-        fr(UNIT_PX_SIZE * 3, UNIT_PX_SIZE * 2, UNIT_PX_SIZE * 3, UNIT_PX_SIZE);
-
+        fr(UNIT_PX_SIZE * 3, UNIT_PX_SIZE * 2, UNIT_PX_SIZE * 3 * (this.damageAmount + 1), UNIT_PX_SIZE);
+        
         // Head
         R.fillStyle = this.team.head;
         fr(UNIT_PX_SIZE, UNIT_PX_SIZE, UNIT_PX_SIZE * 2, UNIT_PX_SIZE * 3);
@@ -232,11 +326,16 @@ class Unit {
             evaluate(HEALTH_GAUGE_HEIGHT + 2)
         );
 
-        R.fillStyle = this.health > 0.3 ? '#0f0' : '#f00';
+    let currentHealthGauge = ~~((this.health * HEALTH_GAUGE_WIDTH) / this.healthSize)
+        
+        R.fillStyle = currentHealthGauge > (HEALTH_GAUGE_WIDTH * .3)
+        ? '#0f0'
+        : '#f00';
+        
         fr(
             evaluate(-HEALTH_GAUGE_WIDTH / 2),
             -HEALTH_GAUGE_RADIUS,
-            HEALTH_GAUGE_WIDTH * this.health,
+            currentHealthGauge,
             HEALTH_GAUGE_HEIGHT
         );
 
@@ -246,13 +345,9 @@ class Unit {
         }
     }
 
-    goto(pt) {
-        this.setBehavior(new Reach(pt));
-    }
-
     setBehavior(b) {
         this.behavior = b;
-        b.attach(this);
+        this.behavior.attach(this);
     }
 
     isSelected() {
@@ -260,3 +355,49 @@ class Unit {
     }
 
 }
+Unit._name = 'yonit'
+
+class Destructor extends Unit {
+    constructor(config = {}) {
+        super(config)
+        this.damageAmount =  UNIT_SHOT_DAMAGE * 2;
+        this.shotInterval = (UNIT_SHOT_INTERVAL * 2) - 0.4;
+        this.attackRadius =  UNIT_ATTACK_RADIUS * 1.5;
+        this.unitSpeed    =  ~~(UNIT_SPEED / 2);
+      
+        this.moving = false;
+        this.healthSize = this.health *= 0.9;
+}
+}
+Destructor._name = 'destructor'
+
+class Killer extends Unit {
+    constructor (config) {
+        super(config)
+        this.damageAmount *= 3
+        this.shotInterval;
+        this.attackRadius *= 2
+        this.unitSpeed    = ~~(UNIT_SPEED * 1.5)
+      
+        this.moving = false;
+        this.healthSize = this.health *= 0.5;
+    }
+}
+Killer._name = 'killer'
+
+class Beast extends Unit {
+    constructor(config){
+        super(config)
+        this.shotInterval = UNIT_SHOT_INTERVAL / 1.5
+        this.unitSpeed    = ~~(UNIT_SPEED * 1.15)
+        
+        this.moving = false;
+        this.healthSize = this.health *= 0.9;
+    }
+}
+Beast._name = 'beast'
+
+class Helper extends Unit {}
+class Shield extends Unit {}
+
+UNITS_CLASSES = [Unit, Destructor, Beast]
