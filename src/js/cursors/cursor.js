@@ -19,7 +19,7 @@ class Cursor {
     }
 
     rightDown() {
-
+        // implement in subclasses
     }
 
     move(p) {
