@@ -14,6 +14,16 @@ function easeOutQuint(t, b, c, d) {
     return c*((t=t/d-1)*t*t*t*t + 1) + b;
 }
 
+
+// @func
+// @param o - Object
+// @param p - Property
+// @param a - From
+// @param b - To
+// @param d - Duration
+// @param l - Delay
+// @param f - Easing function
+// @param e - End callback
 function interp(o, p, a, b, d, l, f, e) {
     var i = {
         o: o, // object
