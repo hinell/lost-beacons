@@ -1,15 +1,23 @@
 class HealCursor extends ChaseCursor {
 
-    get color() {
-        return '#0f0';
-    }
+    constructor (){ super(); this.color = '#f4fff5' }
 
     get label() {
-        return nomangle('HEAL()');
+        return ( this.target ? this.target.name.toLocaleUpperCase() + ':' : '')+'HEAL()';
     }
-
-    get chaseRadius() {
-        return UNIT_HEAL_RADIUS;
+    
+    rightDown() {
+        if (this.target) {
+        let radius      = G.selectionCursor.units.first.radius;
+        let positions   = W.units.freeCirclePositions(this.target,radius);
+            G.selectionCursor.units.forEach((unit,i) => {
+            let position = positions[i];
+            if(unit === this.target                 ) { return unit.setBehavior(new Idle()) }
+            if(unit.behavior.target === unit        ) { return }
+                unit.setBehavior(new Chase(this.target,position,unit.healRadius))
+                this.drawPositionCircles(unit.behavior.reservedPosition())
+            });
+            positions = null
+        }
     }
-
 }
