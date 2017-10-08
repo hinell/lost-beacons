@@ -1,9 +1,11 @@
-class ReachCursor extends Cursor {
+class ReachCursor extends ChaseCursor {
 
-    get color() {
-        return '#0f0';
+    constructor (){
+        super();
+        this.color = '#0f0'
+    
     }
-
+    
     postRender() {
         const arrowRadius = 10;
 
@@ -20,7 +22,7 @@ class ReachCursor extends Cursor {
         }
 
         const beacon = W.beacons
-            .filter(beacon => dist(beacon, this) < BEACON_CONQUER_RADIUS || W instanceof MenuWorld)[0];
+            .filter(beacon => dist(beacon, this) < BEACON_CONQUER_RADIUS)[0];
 
         if (beacon) {
             const offset = (G.t * 1 % 1) * arrowRadius;
@@ -43,7 +45,7 @@ class ReachCursor extends Cursor {
         R.globalAlpha = 1;
         const cursorScale = min(1, max(0, (G.t - this.timeOnPosition - 0.5) * 10));
         scale(cursorScale, cursorScale);
-        this.renderLabel(beacon && dist(beacon, this) < BEACON_CONQUER_RADIUS ? (beacon.team == PLAYER_TEAM ? nomangle('DEFEND()') : nomangle('CAPTURE()')) : nomangle('REACH()'));
+        this.renderLabel(beacon && dist(beacon, this) < BEACON_CONQUER_RADIUS ? (beacon.team === PLAYER_TEAM ? 'DEFEND()' : 'CAPTURE()') : 'REACH()');
     }
 
     move(p) {
@@ -54,30 +56,30 @@ class ReachCursor extends Cursor {
         super.move(p);
     }
 
-    rightDown() {
-        G.selectionCursor.units.forEach(unit => {
-            unit.goto(this);
+    rightDown(e) {
 
-            // Quick effect to show where we're going
-            let circle;
-            let target = unit.behavior.reservedPosition();
-            W.add(circle = {
-                'render': () => {
-                    R.translate(target.x, target.y);
-                    R.scale(circle.a, circle.a);
-                    R.globalAlpha = circle.a;
-                    R.strokeStyle = '#0f0';
-                    R.lineWidth = 1;
-                    R.beginPath();
-                    R.arc(0, 0, 5, 0, PI * 2, true);
-                    R.stroke();
-                }
-            }, RENDERABLE);
-
-            interp(circle, 'a', 1, 0, 0.3, 0, 0, () => W.remove(circle));
-
-            this.sentUnits = true;
-        });
+      let radius = G.selectionCursor.units.first.radius;
+      let amount = G.selectionCursor.units.length
+      
+      let positions = w.down.alt
+      ? W.units.freeRectanglePositions(this,radius)
+      : W.units.freeCirclePositions(this,radius ,radius ,amount)
+      
+      let position;
+        // let reachBeahavior = new Reach(this);
+          G.selectionCursor.units.forEach((unit,i) => {
+              position = positions[i];
+              if(position) {
+                  unit.setBehavior(new Reach(this.target, positions[i]))
+                  this.drawPositionCircles(positions[i])
+              } else {
+              // if no position available - stay still
+                unit.setBehavior(new Idle())
+              }
+              this.sentUnits = true;
+          });
+          positions = null
+    
     }
 
 }
