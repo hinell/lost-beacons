@@ -22,7 +22,7 @@ class ReachCursor extends ChaseCursor {
         }
 
         const beacon = W.beacons
-            .filter(beacon => dist(beacon, this) < BEACON_CONQUER_RADIUS)[0];
+            .filter(beacon => dist(beacon, this) < beacon.conquerRadius)[0];
 
         if (beacon) {
             const offset = (G.t * 1 % 1) * arrowRadius;
