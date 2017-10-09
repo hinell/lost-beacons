@@ -67,7 +67,9 @@ class Unit extends Object_ {
         this.replies       = cfg.replies || ALL_REPLIES
         this.cycleTimer    = this.cycleInterval = 1;
         this.cacheTimer    = this.cacheInterval =this.cycleInterval * 2;
-        this.closestUnits  = [] // cached units
+        this.closestUnits  = []; // cached units
+        this.closestEnemies= [];
+        this.closestFriends= [];
     }
 
     get dps () { return this.health }
@@ -135,8 +137,7 @@ class Unit extends Object_ {
     enemyInRange() {
         // this.enemies ???
         // this.collection = currentMapSector
-        return this.closestUnits
-            .filter(c => c.team !== this.team)
+        return this.closestEnemies
             .at(this, this.attackRadius)
             .filter(c => !W.hasObstacleBetween(this, c))
             .sort((a, b) => dist(this, a) - dist(this, b))
@@ -144,8 +145,7 @@ class Unit extends Object_ {
     }
     
     closestWeakFriend() {
-      return this.closestUnits
-        .filter(unit => unit.team === this.team) // this.controller
+      return this.closestFriends
         .at(this, this.healRadius)
         .filter(u => u.health < u.healthSize)
         .filter(unit => !W.hasObstacleBetween(this, unit))
@@ -166,6 +166,8 @@ class Unit extends Object_ {
         if ((this.cacheTimer-= e) < this.cacheInterval) {
             this.cacheTimer = this.cacheInterval
             this.closestUnits = this.collection.at(this,this.attackRadius)
+            this.closestEnemies = this.closestUnits.filter(u => u.team !== this.team)
+            this.closestFriends = this.closestUnits.filter(u => u.team === this.team)
         }
         
         // main cycle
