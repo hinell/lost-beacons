@@ -156,8 +156,9 @@ class GameplayWorld extends World {
             fill();
             stroke();
 
-            drawCenteredText(nomangle('beacons'), 0, 20, HUD_SCORE_CELL_SIZE, '#fff', true);
-            drawCenteredText(nomangle('units'), 0, 40, HUD_SCORE_CELL_SIZE, '#fff', true);
+            drawCenteredText('beacons', 0, 2, HUD_SCORE_CELL_SIZE, '#fff', true);
+            drawCenteredText('units', 0, 30, HUD_SCORE_CELL_SIZE, '#fff', true);
+            drawCenteredText('available', 0, 58, HUD_SCORE_CELL_SIZE, '#fff', true);
 
             function gauge(x, y, value, width, sign, color) {
                 const w = (5 + width) * sign;
@@ -171,18 +172,25 @@ class GameplayWorld extends World {
                 drawCenteredText('' + value, x + w + sign * 15, y, HUD_SCORE_CELL_SIZE, color, true);
             }
 
-            gauge(-HUD_GAUGE_GAP / 2, 20, G.beaconsScore(PLAYER_TEAM), G.beaconsScore(PLAYER_TEAM) / W.beacons.length * 100, -1, '#0f0');
-            gauge(HUD_GAUGE_GAP / 2, 20, G.beaconsScore(ENEMY_TEAM), G.beaconsScore(ENEMY_TEAM) / W.beacons.length * 100, 1, '#f00');
+            gauge(-HUD_GAUGE_GAP / 2, 2, G.beaconsScore(PLAYER_TEAM), G.beaconsScore(PLAYER_TEAM) / W.beacons.length * 100, -1, '#0f0');
+            gauge(HUD_GAUGE_GAP /  2, 2, G.beaconsScore(ENEMY_TEAM) , G.beaconsScore(ENEMY_TEAM) / W.beacons.length * 100, 1  , '#f00');
 
-            const playerUnits = G.unitsScore(PLAYER_TEAM);
-            const enemyUnits = G.unitsScore(ENEMY_TEAM);
-            const maxUnits = max(playerUnits, enemyUnits);
+            let playerUnits = G.unitsScore(PLAYER_TEAM);
+            let enemyUnits = G.unitsScore(ENEMY_TEAM);
+            let maxUnits = max(playerUnits, enemyUnits);
 
-            gauge(-HUD_GAUGE_GAP / 2, 40, G.unitsScore(PLAYER_TEAM), G.unitsScore(PLAYER_TEAM) / maxUnits * 100, -1, '#0f0');
-            gauge(HUD_GAUGE_GAP / 2, 40, G.unitsScore(ENEMY_TEAM), G.unitsScore(ENEMY_TEAM) / maxUnits * 100, 1, '#f00');
+            gauge(-HUD_GAUGE_GAP / 2, 30, G.unitsScore(PLAYER_TEAM), G.unitsScore(PLAYER_TEAM) / maxUnits * 100, -1, '#0f0');
+            gauge(HUD_GAUGE_GAP / 2, 30, G.unitsScore(ENEMY_TEAM), G.unitsScore(ENEMY_TEAM) / maxUnits * 100, 1, '#f00');
+            
+            let availableInBeaconsPlayer = W.beacons.filter(b => b.team === PLAYER_TEAM ).reduce((availUnits,b) => availUnits+b.readyUnits.length ,0);
+            let availableInBeaconsEnemy  = W.beacons.filter(b => b.team === ENEMY_TEAM ).reduce((availUnits,b) => availUnits+b.readyUnits.length ,0);
+            
+            gauge(-HUD_GAUGE_GAP / 2, 58, availableInBeaconsPlayer, availableInBeaconsPlayer / maxUnits * 100, -1, '#0f0');
+            gauge(HUD_GAUGE_GAP / 2, 58, availableInBeaconsEnemy, availableInBeaconsEnemy / maxUnits * 100, 1, '#f00');
+            
         });
 
-        drawCenteredText(nomangle('wasd/arrows: move the camera  -  left click: select units  -  right click: send units'), CANVAS_WIDTH / 2, 10, 2, '#888');
+        drawCenteredText('wasd/arrows: move the camera  -  left click: select units  -  right click: send units', CANVAS_WIDTH / 2, 10, 2, '#888');
     }
 
     gameOver(win) {
