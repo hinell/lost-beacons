@@ -1,5 +1,26 @@
 class Beacons extends Objects {}
 
+const BEACON_CENTER_RADIUS = 15;
+const BEACON_ARC_RADIUS    = 25;
+const BEACON_GAUGE_WIDTH   = 50;
+const BEACON_GAUGE_HEIGHT  = 4;
+const BEACON_GAUGE_RADIUS  = 30;
+
+
+const BEACON_CENTER_PERIOD          = .7;
+const BEACON_WAVE_PERIOD            = 1;
+const BEACON_BASE_THICKNESS         = 15;
+const BEACON_BASE_RADIUS            = 40;
+const BEACON_CONQUER_RADIUS         = 150;
+const BEACON_CONQUER_SPEED_PER_UNIT = 0.1;
+
+const BEACON_SPACING_RADIUS                         = 500;
+const BEACON_MAX_CONQUERING_UNITS                   = 6;
+const BEACON_REINFORCEMENTS_BUTTON_PADDING          = 5;
+const BEACON_REINFORCEMENTS_BUTTON_CELL_SIZE        = 2;
+const BEACON_REINFORCEMENTS_BUTTON_BORDER_THICKNESS = 1;
+const BEACON_REINFORCEMENTS_BUTTON_Y                = 50;
+
 const REINFORCEMENTS_STRING = 'reinforcements';
 
 class Beacon {
@@ -8,10 +29,15 @@ class Beacon {
         this.Unit               = config.Unit || config.UnitConsturctor || Unit;
         this.reinforcementsSize = config.reinforcementsSize || 1;
 
-
         this.team = config.team || NEUTRAL_TEAM;
         this.conquerRadius = config.conquerRadius || BEACON_CONQUER_RADIUS;
         this.spawnInterval = config.spawnInterval || this.team.reinforcementsInterval;
+        
+        this.closestUnits = [];
+        this.unitsDetectionRadius = config.unitsDetectionRadius || BEACON_SPACING_RADIUS
+        
+        this.cacheTimer = this.cacheInterval = 2.5
+        this.cycleTimer = this.cycleInterval = 0.2
         
         // Get rid of those if theyre set externally
         this.x = 0;
@@ -33,56 +59,64 @@ class Beacon {
     }
     
     cycle(e) {
-        let units       = W.units.filter(u => dist(u, this) < this.conquerRadius);
-        let playerUnits = units.filter(unit => unit.team === PLAYER_TEAM);
-        let enemyUnits  = units.filter(unit => (unit.team === ENEMY_TEAM || unit.team === NEMESIS_TEAM) );
-        
-        if(!units) { throw new Error('Invalid units assignment: units are undefined') }
-        let actualConqueringTeam;
-        let isConquering;
-        if (enemyUnits.length > playerUnits.length) {
-            actualConqueringTeam = enemyUnits[0].team;
-            isConquering = this.enemyTeamOwned < 1;
+    
+        // TODO: Rework
+        if((this.cacheTimer-= e) <0){
+            this.cacheTimer = this.cacheInterval
+            this.closestUnits = W.units.at(this,this.unitsDetectionRadius)
+        }
+        if((this.cycleTimer -= e) < 0 ){
+            this.cycleTimer = this.cycleInterval
             
-        } else if (enemyUnits.length < playerUnits.length) {
-            actualConqueringTeam = PLAYER_TEAM;
-            isConquering = this.playerTeamOwned < 1;
-        }
-        
-        // render particles
-        this.nextParticle -= e;
-        if (this.nextParticle < 0 && isConquering) {
+            let units       = this.closestUnits.at(this,this.conquerRadius);
+            let playerUnits = units.filter(unit =>  unit.team === PLAYER_TEAM);
+            let enemyUnits  = units.filter(unit => (unit.team === ENEMY_TEAM || unit.team === NEMESIS_TEAM) );
+          
+            let actualConqueringTeam;
+            let isConquering;
+            if (enemyUnits.length > playerUnits.length) {
+                actualConqueringTeam = enemyUnits[0].team;
+                isConquering = this.enemyTeamOwned < 1;
+                
+            } else {
+                actualConqueringTeam = PLAYER_TEAM;
+                isConquering = this.playerTeamOwned < 1;
+            }
             
-            this.nextParticle = 0.2;
-            // const unit = pick(actualConqueringTeam === PLAYER_TEAM ? playerUnits : enemyUnits);
-            const unit = pick(units);
-            const t = rand(0.5, 1.5);
-            particle(5, actualConqueringTeam.body, [
-                ['x', unit.x, this.x, t, 0],
-                ['y', unit.y, this.y, t, 0],
-                ['s', 0, rand(5, 10), t]
-            ], true);
+            // render particles
+            this.nextParticle -= e;
+            if (this.nextParticle < 0 && isConquering) {
+                
+                this.nextParticle = 0.2;
+                // const unit = pick(actualConqueringTeam === PLAYER_TEAM ? playerUnits : enemyUnits);
+                const unit = pick(units);
+                const t = rand(0.5, 1.5);
+                particle(5, actualConqueringTeam.body, [
+                    ['x', unit.x, this.x, t, 0],
+                    ['y', unit.y, this.y, t, 0],
+                    ['s', 0, rand(5, 10), t]
+                ], true);
+            }
+               let playerOwnedSign = 0;
+            let enemyOwnedSign  = 0
+            
+            if (actualConqueringTeam === ENEMY_TEAM || actualConqueringTeam === NEMESIS_TEAM) {
+                playerOwnedSign = -1;
+                enemyOwnedSign = this.playerTeamOwned > 0 ? 0 : 1;
+            } else if (actualConqueringTeam === PLAYER_TEAM) {
+                enemyOwnedSign = -1;
+                playerOwnedSign = this.enemyTeamOwned > 0 ? 0 : 1;
+            } else if (units.length === 0) {
+                    playerOwnedSign =  this.team === PLAYER_TEAM ?  1 : -1;
+                    enemyOwnedSign  =  this.team === ENEMY_TEAM || this.team === NEMESIS_TEAM ? 1 :  -1;
+                // Otherwise, it means we have a tie, so let's not move ownership at all
+            }
+            
+            const factor = BEACON_CONQUER_SPEED_PER_UNIT * between(1, abs(playerUnits.length - enemyUnits.length), BEACON_MAX_CONQUERING_UNITS);
+            
+            this.playerTeamOwned  = max(0, min(1, this.playerTeamOwned + playerOwnedSign * factor * e));
+            this.enemyTeamOwned   = max(0, min(1, this.enemyTeamOwned + enemyOwnedSign * factor * e));
         }
-           let playerOwnedSign = 0;
-        let enemyOwnedSign  = 0
-        
-        if (actualConqueringTeam === ENEMY_TEAM || actualConqueringTeam === NEMESIS_TEAM) {
-            playerOwnedSign = -1;
-            enemyOwnedSign = this.playerTeamOwned > 0 ? 0 : 1;
-        } else if (actualConqueringTeam === PLAYER_TEAM) {
-            enemyOwnedSign = -1;
-            playerOwnedSign = this.enemyTeamOwned > 0 ? 0 : 1;
-        } else if (units.length === 0) {
-                playerOwnedSign =  this.team === PLAYER_TEAM ?  1 : -1;
-                enemyOwnedSign  =  this.team === ENEMY_TEAM || this.team === NEMESIS_TEAM ? 1 :  -1;
-            // Otherwise, it means we have a tie, so let's not move ownership at all
-        }
-        
-        const factor = BEACON_CONQUER_SPEED_PER_UNIT * between(1, abs(playerUnits.length - enemyUnits.length), BEACON_MAX_CONQUERING_UNITS);
-        
-        this.playerTeamOwned  = max(0, min(1, this.playerTeamOwned + playerOwnedSign * factor * e));
-        this.enemyTeamOwned   = max(0, min(1, this.enemyTeamOwned + enemyOwnedSign * factor * e));
-      
       
 
     let newOwner;
@@ -107,7 +141,7 @@ class Beacon {
               this.conqueredAnimation();
               
               if(this.oldOwner === PLAYER_TEAM) {
-                 this.indicator.indicate(this.Unit._name + ' ' + 'factory is lost!', this.oldOwner.beacon, 3);
+                 this.indicator.indicate('control over ' + this.Unit._name + ' is lost!', this.oldOwner.beacon, 3);
               }
               
               if (newOwner === PLAYER_TEAM) {
@@ -143,7 +177,7 @@ class Beacon {
     }
     
     spawnUnits(){
-        let freePositionsAround = W.units.concat(this).allocateCirclePositions(this,UNIT_RADIUS ,this.conquerRadius * 2)
+        let freePositionsAround = W.units.concat(this).freeCirclePositions(this,UNIT_RADIUS ,this.conquerRadius * 2)
         let freePosAmount = freePositionsAround.length, i = 0;
         
         while(this.readyUnits.length && i <= freePosAmount) {

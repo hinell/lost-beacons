@@ -22,7 +22,7 @@ class Objects extends Array {
     return super.unshift(obj)
   }
   
-  nearestObjectsTo(targetPos){
+  closestTo(targetPos){
     return this
     .filter(currentObj => currentObj !== targetPos )
     .sort((a, b) => dist(targetPos, a) - dist(targetPos, b))
@@ -56,41 +56,40 @@ class Objects extends Array {
           && positions.push(position)
         
       }
-
-
+    
       return positions;
   
     }
   
-  allocateCirclePositions(position,radBetweenPos, withinRadius, requiredPositions = 0) {
+  freeCirclePositions(position,radBetweenPos,withinRadius,requiredPositions, startRadiusOffCenter) {
       if(!(position instanceof Object_)){ position = new Object_(position) }
-      let maxRadius = withinRadius;
-      if(!withinRadius){ maxRadius = radBetweenPos * 3 } // default 3 times of radius between each point
+
+      if(!withinRadius){ withinRadius = radBetweenPos * 3 } // default 3 times of radius between each point
           requiredPositions = requiredPositions || this.length;
           requiredPositions += ~~(requiredPositions * .10); // available positions + ten percent of possible
       let positions = new this.constructor();
       
-      for ( let currentRadius = 0;
-                maxRadius < withinRadius || positions.length <= requiredPositions;
+      for ( let currentRadius = startRadiusOffCenter || 0;
+                currentRadius < withinRadius || positions.length <= requiredPositions;
                 currentRadius += radBetweenPos
       ) {
-        positions = positions.concat(this.allocateSingleCirclePositions(position,radBetweenPos,currentRadius))
+        let nextFreePositions = this.allocateSingleCirclePositions(position,radBetweenPos,currentRadius);
+        positions = positions.concat(nextFreePositions)
+        debugger
         // position = positions[0] // change positation target dynamically
       }
       return positions
   }
   
   
-  allocateRectanglePositions(position, offset = GRID_SIZE){
+  freeRectanglePositions(position,offset = GRID_SIZE){
 
-    let width   = ~~(Math.sqrt(this.length)) + 1
-    let height  = ~~(Math.sqrt(this.length)) + 1
+    let width   = ~~(Math.sqrt(this.length)) + 2
+    let height  = ~~(Math.sqrt(this.length)) + 2
     
     let startX = position.x - ~~((width  * offset * 2)/ 2) - offset
     let startY = position.y - ~~((height * offset * 2)/ 2) - offset
-
     
-        
     let positions = new this.constructor();
       let currentX = startX, currentY = startY;
       for (let i = 0; i < width; i++) {

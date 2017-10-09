@@ -1,4 +1,6 @@
-class Units extends Objects {}
+class Units extends Objects {
+    totalHealth(){ return this.reduce((total,u) => total+u.health,0) }
+}
 
 UNIT_SPEED              =  150;
 UNIT_ANGULAR_SPEED      =  Math.PI / 360;
