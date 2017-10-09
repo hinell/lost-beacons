@@ -31,15 +31,16 @@ class SelectionCursor extends Cursor {
         this.y = p.y;
 
         if (this.downPosition) {
-            this.selection = W.units.filter(unit => {
+            this.selection = W.units
+             .filter(unit => unit.team === PLAYER_TEAM) // only player team is available
+             .filter(unit => {
                 if (dist(this, this.downPosition) < 5) {
                     return dist(unit, this.downPosition) < 20;
                 }
-
-                return unit.team === PLAYER_TEAM &&
-                    isBetween(this.downPosition.x, unit.x, this.x) &&
-                    isBetween(this.downPosition.y, unit.y, this.y);
-            });
+                
+                return isBetween(this.downPosition.x, unit.x, this.x)
+                    && isBetween(this.downPosition.y, unit.y, this.y);
+                });
         }
     }
 
