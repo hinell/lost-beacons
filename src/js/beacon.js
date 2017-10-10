@@ -7,7 +7,7 @@ BEACON_GAUGE_HEIGHT  = 4;
 BEACON_GAUGE_RADIUS  = 30;
 
 BEACON_CENTER_PERIOD          = .7;
-BEACON_WAVE_PERIOD            = 1;
+BEACON_WAVE_PERIOD            = 1.5;
 BEACON_BASE_THICKNESS         = 15;
 BEACON_BASE_RADIUS            = 40;
 BEACON_CONQUER_RADIUS         = 150;
@@ -28,17 +28,15 @@ class Beacon {
         this.Units              = Units;
         this.reinforcementsSize = 1;
         
+        // conquer parameters
         this.previousController
         this.controller             = NEUTRAL_TEAM;
         this.conquerRadius          = BEACON_CONQUER_RADIUS;
         this.maxConquerors          = BEACON_MAX_CONQUERING_UNITS
-        
-
-        this.lastConqueringFactor = 0.01;
-        
         this.conquered; this.conqueror;/* conquering controller, both*/
-        this.conqueringUnits = new Units();
-      
+        this.conqueringUnits        = new Units();
+        this.lastConqueringFactor   = 1;
+        
         this.x = 0;
         this.y = 0;
       
@@ -46,16 +44,14 @@ class Beacon {
     // TODO: add beacon retention timer factor in play: longer it has been controlled - longer it take to gain control back
         this.controlCap    = 1;
 
-        this.nextParticle = 1;
+        this.nextParticle  = 1;
         
         this.nextReinforcements = 0;
       
-        this.unitsDetectionRadius = config.unitsDetectionRadius || BEACON_SPACING_RADIUS
+        this.unitsDetectionRadius = BEACON_SPACING_RADIUS
         this.detectedUnits        = new this.Units();
-        this.controllerUnits      = new this.Units(); // in detectable range
-        this.foreignUnits         = new this.Units(); // in detectable range
         
-        this.cacheInterval = 0.1;
+        this.cacheInterval = .2;
         this.cacheTimer    = 0; // check if any units in range immediately
         
         this.readyUnits = new this.Units();
@@ -63,46 +59,51 @@ class Beacon {
         
     }
     
+    // Return all visible units
+    get units() { return this.detectedUnits }
+    
     cycle(e) {
     // TODO: Rework
-    if((this.cacheTimer-= e) <0){
+    if((this.cacheTimer-= e) <= 0){
         this.cacheTimer    = this.cacheInterval
         
         // TODO: Should be replaced by controller fields
         this.allControllerUnits     = W.units.filter(unit => unit.team === this.controller ).length;
         this.allControllerBeacons   = W.beacons.filter(b => b.team === this.controller).length;
         
-        this.detectedUnits = W.units.at(this,this.unitsDetectionRadius)
+        this.detectedUnits   = W.units.at(this,this.unitsDetectionRadius)
+        this.conqueringUnits = this.detectedUnits.at(this,this.conquerRadius).filter(u => u.team !== this.controller);
         
-        let filtered         = this.detectedUnits.filter(u => u.team === this.controller,true)
-        this.controllerUnits = filtered[0];
-        this.foreignUnits    = filtered[1];
+
+        this.conqueringTeams = new Map();
+        this.conqueringUnits.forEach(u => {
+            let controllerObj = this.conqueringTeams.get(u.team);
+            if(!controllerObj){ this.conqueringTeams.set(u.team, controllerObj = { controller: u.team , count: 0, units: [] }) }
+                controllerObj.count++;
+                controllerObj.units.push(u)
+                this.conqueringTeams.set(u.team,controllerObj);
+        });
+        
+
+        // amount of units of all conquering teams are in equilibrium
+        
     }
     
-    let controllers     = this.controllerUnits.at(this,this.conquerRadius);
-    let foreigners      = this.foreignUnits.at(this,this.conquerRadius);
-    let conqueringTeams = foreigners.reduce((teams, unit) => {
-        teams.indexOf(unit.team) < 0 && teams.push(unit.team);
-        
-        return teams
-    } ,[]);
-        if(conqueringTeams.length > 1){ debugger }
-    
-    let equilibrium    = controllers.length === foreigners.length
-        || (controllers.length === 0 && foreigners.length === 0);
-        
-    let foreignersPrevail  = !equilibrium && foreigners.length > controllers.length || foreigners.totalHealth() > controllers.totalHealth();
-    let controllersPrevail = !equilibrium && !foreignersPrevail;
+    let equilibrium = !this.conqueringTeams.size; // if 0 then true, false otherwise
+    if(this.conqueringTeams.size === 2){
+        equilibrium  = this.conqueringTeams.values(true)[0].count === this.conqueringTeams.values(true)[1].count
+    } else if (this.conqueringTeams.size > 2) {
+        equilibrium = this.conqueringTeams.values()
+        .map(controllerObj => controllerObj.units.length )
+        .every((x,i,a)=> a[i+1] ? x == a[i+1] : true )
+    }
     
     
-  
-    if (equilibrium || controllersPrevail) {
+    if (equilibrium) {
         this.conquered
         = this.conqueror
         = this.conqueringUnits
         = undefined;
-    }
-    if (equilibrium) {
         if(!this.controller || this.controller === NEUTRAL_TEAM){
             if (this.control > 0) {
                 this.control-= e
@@ -118,57 +119,55 @@ class Beacon {
             }
         }
     }
-    if (foreignersPrevail) {
+    if (!equilibrium) {
+        let conquerorObj = this.conqueringTeams.size === 1
+        ? this.conqueringTeams.values(true)[0]
+        : this.conqueringTeams
+            .values(true)
+            .sort((a,b) => b.count - a.count )[0];
+            
         this.defended  = false;
-        this.conquered = this.conqueror = foreigners[0].team;
-        this.conqueringUnits = foreigners;
+        this.conquered =
+        this.conqueror = conquerorObj.controller
         
-        let conqueringFactor = this.conqueringUnits
-          .sort((a,b) => b.conqueringSpeed - a.conqueringSpeed )
-          .slice(0,this.maxConquerors)
-          .reduce((factor, u) => factor + u.conqueringSpeed ,0);
-          
-        if(!this.controller || this.controller === NEUTRAL_TEAM){
+        if (this.conqueror === this.controller) { this.conqueror = this.conquered =  undefined }
+        else
+        {
+          let conqueringFactor = conquerorObj.units
+                .sort((a,b) => b.conqueringSpeed - a.conqueringSpeed)
+                .slice(0,this.maxConquerors)
+                .reduce((factor,u) => factor + u.conqueringSpeed,0);
+                
+          if (!this.controller || this.controller === NEUTRAL_TEAM) {
             // retaking control of neutral
-                this.control+= conqueringFactor * e * .5
-                
+            this.control += conqueringFactor * e * .5
             if (this.control >= this.controlCap) {
-                this.control                = this.controlCap;
-                this.previousController     = this.controller;
-                this.controller             = this.conqueror
-                this.lastConqueringFactor   = conqueringFactor;
-                this.conqueredAnimation();
-                this.updateSpawnMachine();
-                this.indicateNewController();
+              this.control              = this.controlCap;
+              this.previousController   = this.controller;
+              this.controller           = this.conqueror
+              this.lastConqueringFactor = conqueringFactor;
+              this.conqueredAnimation();
+              this.updateSpawnMachine();
+              this.indicateNewController();
             }
-        }
-        else {
+          }
+          else if (this.conqueror !== this.controller) {
             //  retaking control from enemy
-                this.control-= this.lastConqueringFactor * e * .5
-                
+            this.control -= this.lastConqueringFactor * e * .5
             if (this.control <= 0) {
-              this.control                           = 0;
-              this.previousController                = this.controller
-              this.controller                        = NEUTRAL_TEAM // neutral controller
+              this.control            = 0;
+              this.previousController = this.controller
+              this.controller         = NEUTRAL_TEAM // neutral controller
               // this.controller.reinforcementsInterval = 10;
               this.conqueredAnimation();
               this.updateSpawnMachine();
               this.indicateNewController();
-            
             }
+          }
         }
+        
 
     }
-    if (controllersPrevail) {
-        this.defended = true
-        // retaking control from neutral
-        if (this.control < this.controlCap) {
-            this.control+= this.lastConqueringFactor * e * 3;
-        } else {
-            this.control = this.controlCap
-        }
-    }
-    
     
     // stop spawning once the total cap is reached
     if (this.allControllerUnits  > (this.allControllerBeacons + 1)  * G.levelId * 6 ) { return }
@@ -222,7 +221,25 @@ class Beacon {
         // this.readyUnits = []
     }
     
-    render() {
+    render(e) {
+    
+        // circles of the radiuses
+        beginPath();
+        R.strokeStyle = '#ffffff';
+        R.globalAlpha = 0.1
+        arc(this.x,this.y,this.conquerRadius,0,2 * PI)
+        stroke();
+        
+        
+        beginPath();
+        R.strokeStyle = '#ffffff';
+        R.globalAlpha = 0.1
+        arc(this.x,this.y,this.unitsDetectionRadius,0,2 * PI)
+        stroke();
+        
+        
+        
+        beginPath();
         wrap(() => {
             const beaconRow = ~~(this.y / GRID_SIZE);
             const beaconCol = ~~(this.x / GRID_SIZE);
@@ -357,59 +374,58 @@ class Beacon {
         else if (this.readyUnits.length === 0    ) { this.renderTimer(buttonBounds) }
         else { this.renderReinforceButton(buttonBounds) }
         
-        this.nextParticle -= e;
-        if (this.nextParticle < 0 && this.conquered) {
-            let units = this.detectedUnits.at(this,this.conquerRadius);
-            this.nextParticle = 0.2;
-            // const unit = pick(actualConqueringTeam === PLAYER_TEAM ? playerUnits : enemyUnits);
-            const unit = pick(units) || units[0];
-            const t = rand(0.5, 1.5);
-            particle(5,this.conquered.body,[
-                ['x', unit.x, this.x, t, 0],
-                ['y', unit.y, this.y, t, 0],
-                ['s', 0, rand(5, 10), t]
-            ],true);
-        }
-        
-        if (this.conquered) {
-            // Draw nothing if neutral
-            // if (this.controller === NEUTRAL_TEAM && !this.oldOwner) {
-            //     drawCenteredText('x x x x x x x x', this.x, this.y + BEACON_REINFORCEMENTS_BUTTON_Y, BEACON_REINFORCEMENTS_BUTTON_CELL_SIZE, this.controller.beacon, true)
-            // }
-            
-            translate(this.x, this.y);
-    
-            const s =  (G.t % BEACON_WAVE_PERIOD) / BEACON_WAVE_PERIOD;
-            R.strokeStyle = this.controller.beacon;
-            R.lineWidth = 2;
-            R.globalAlpha = s;
-            beginPath();
-            arc(0, 0, 80 * (1 - s), 0, PI * 2, true);
-            stroke();
-            
-            let color = '#f00';
-            if(this.controller !== PLAYER_TEAM && this.conqueror === PLAYER_TEAM) { color = '#0f0' }
-    
-            const maxOwned = this.control;
-            if (maxOwned >= 0 && maxOwned < this.controlCap) {
-                R.globalAlpha = 1;
-                R.fillStyle = '#000';
-                fr(
-                    -BEACON_GAUGE_WIDTH / 2 - 1,
-                    -BEACON_GAUGE_RADIUS - 1,
-                    evaluate(BEACON_GAUGE_WIDTH + 2),
-                    evaluate(BEACON_GAUGE_HEIGHT + 2)
-                );
-    
-                R.fillStyle = color;
-                fr(
-                    -BEACON_GAUGE_WIDTH / 2 * this.control,
-                    -BEACON_GAUGE_RADIUS,
-                    BEACON_GAUGE_WIDTH * this.control,
-                    BEACON_GAUGE_HEIGHT
-                );
+        if (this.conquered && this.conqueringUnits.length) {
+            this.nextParticle -= e;
+            if (this.nextParticle < 0) {
+                
+                let units = this.conqueringUnits;
+                this.nextParticle = 0.2;
+                // const unit = pick(actualConqueringTeam === PLAYER_TEAM ? playerUnits : enemyUnits);
+                const unit = pick(units) || units[0];
+                const t = rand(0.5, 1.5);
+                particle(5,this.conqueror.body,[
+                    ['x', unit.x, this.x, t, 0],
+                    ['y', unit.y, this.y, t, 0],
+                    ['s', 0, rand(5, 10), t]
+                ],true);
             }
         }
+        // Draw nothing if neutral
+        // if (this.controller === NEUTRAL_TEAM && !this.oldOwner) {
+        //     drawCenteredText('x x x x x x x x', this.x, this.y + BEACON_REINFORCEMENTS_BUTTON_Y, BEACON_REINFORCEMENTS_BUTTON_CELL_SIZE, this.controller.beacon, true)
+        // }
+        
+        
+        translate(this.x, this.y);
+        
+        if(this.conquered)
+        { this.renderWaves(BEACON_WAVE_PERIOD - .5) } else
+        { this.renderWaves(BEACON_WAVE_PERIOD) }
+        
+
+        const maxOwned = this.control;
+        if (maxOwned > 0 && maxOwned < this.controlCap) {
+
+        let color = '#f00';
+        if(!this.controller || this.controller === NEUTRAL_TEAM && this.conqueror === PLAYER_TEAM) { color = '#0f0' }
+            R.globalAlpha = 1;
+            R.fillStyle = '#000000';
+            fr(
+                -BEACON_GAUGE_WIDTH / 2 - 1,
+                -BEACON_GAUGE_RADIUS - 1,
+                (BEACON_GAUGE_WIDTH + 2),
+                (BEACON_GAUGE_HEIGHT + 2)
+            );
+
+            R.fillStyle = color;
+            fr(
+                -BEACON_GAUGE_WIDTH / 2 * this.control,
+                -BEACON_GAUGE_RADIUS,
+                BEACON_GAUGE_WIDTH * this.control,
+                BEACON_GAUGE_HEIGHT
+            );
+        }
+
     }
 
     drawArc(angle, radius) {
@@ -425,7 +441,18 @@ class Beacon {
     get index() {
         return W.beacons.indexOf(this) + 1;
     }
-
+    
+    renderWaves(frequency = 1){
+        const s =  (G.t % frequency) / frequency;
+        R.strokeStyle = this.controller.beacon;
+        R.lineWidth = 2;
+        R.globalAlpha = 1- s;
+        beginPath();
+        // arc(0, 0, 80 * (1 - s), 0, PI * 2, true);
+        arc(0, 0, this.conquerRadius *  s , 0, PI * 2, true);
+        stroke();
+    }
+    
     conqueredAnimation() {
         for (let i = 0 ; i < 100 ; i++) {
             const angle = rand(0, PI * 2);
