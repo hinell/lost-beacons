@@ -1,179 +1,206 @@
 class Beacons extends Objects {}
 
-const BEACON_CENTER_RADIUS = 15;
-const BEACON_ARC_RADIUS    = 25;
-const BEACON_GAUGE_WIDTH   = 50;
-const BEACON_GAUGE_HEIGHT  = 4;
-const BEACON_GAUGE_RADIUS  = 30;
+BEACON_CENTER_RADIUS = 15;
+BEACON_ARC_RADIUS    = 25;
+BEACON_GAUGE_WIDTH   = 50;
+BEACON_GAUGE_HEIGHT  = 4;
+BEACON_GAUGE_RADIUS  = 30;
 
+BEACON_CENTER_PERIOD          = .7;
+BEACON_WAVE_PERIOD            = 1;
+BEACON_BASE_THICKNESS         = 15;
+BEACON_BASE_RADIUS            = 40;
+BEACON_CONQUER_RADIUS         = 150;
 
-const BEACON_CENTER_PERIOD          = .7;
-const BEACON_WAVE_PERIOD            = 1;
-const BEACON_BASE_THICKNESS         = 15;
-const BEACON_BASE_RADIUS            = 40;
-const BEACON_CONQUER_RADIUS         = 150;
-const BEACON_CONQUER_SPEED_PER_UNIT = 0.1;
-
-const BEACON_SPACING_RADIUS                         = 500;
-const BEACON_MAX_CONQUERING_UNITS                   = 6;
-const BEACON_REINFORCEMENTS_BUTTON_PADDING          = 5;
-const BEACON_REINFORCEMENTS_BUTTON_CELL_SIZE        = 2;
-const BEACON_REINFORCEMENTS_BUTTON_BORDER_THICKNESS = 1;
-const BEACON_REINFORCEMENTS_BUTTON_Y                = 50;
+BEACON_SPACING_RADIUS                         = 500;
+BEACON_MAX_CONQUERING_UNITS                   = 6;
+BEACON_REINFORCEMENTS_BUTTON_PADDING          = 5;
+BEACON_REINFORCEMENTS_BUTTON_CELL_SIZE        = 2;
+BEACON_REINFORCEMENTS_BUTTON_BORDER_THICKNESS = 1;
+BEACON_REINFORCEMENTS_BUTTON_Y                = 50;
 
 const REINFORCEMENTS_STRING = 'reinforcements';
 
 class Beacon {
 
     constructor(config = {}) {
-        this.Unit               = config.Unit || config.UnitConsturctor || Unit;
-        this.reinforcementsSize = config.reinforcementsSize || 1;
+        this.Unit               = Unit;
+        this.Units              = Units;
+        this.reinforcementsSize = 1;
+        
+        this.previousController
+        this.controller             = NEUTRAL_TEAM;
+        this.conquerRadius          = BEACON_CONQUER_RADIUS;
+        this.maxConquerors          = BEACON_MAX_CONQUERING_UNITS
+        
 
-        this.team = config.team || NEUTRAL_TEAM;
-        this.conquerRadius = config.conquerRadius || BEACON_CONQUER_RADIUS;
-        this.spawnInterval = config.spawnInterval || this.team.reinforcementsInterval;
+        this.lastConqueringFactor = 0.01;
         
-        this.closestUnits = [];
-        this.unitsDetectionRadius = config.unitsDetectionRadius || BEACON_SPACING_RADIUS
-        
-        this.cacheTimer = this.cacheInterval = 2.5
-        this.cycleTimer = this.cycleInterval = 0.2
-        
-        // Get rid of those if theyre set externally
+        this.conquered; this.conqueror;/* conquering controller, both*/
+        this.conqueringUnits = new Units();
+      
         this.x = 0;
         this.y = 0;
       
-        this.conqueringTeam = null;
+        this.control       = 0;
+    // TODO: add beacon retention timer factor in play: longer it has been controlled - longer it take to gain control back
+        this.controlCap    = 1;
 
-        this.enemyTeamOwned = 0;
-        this.playerTeamOwned = 0;
-
-        this.nextParticle = 0;
-      
+        this.nextParticle = 1;
+        
         this.nextReinforcements = 0;
       
-        this.readyUnits = new Units();
+        this.unitsDetectionRadius = config.unitsDetectionRadius || BEACON_SPACING_RADIUS
+        this.detectedUnits        = new this.Units();
+        this.controllerUnits      = new this.Units(); // in detectable range
+        this.foreignUnits         = new this.Units(); // in detectable range
         
-        this.indicator = new Indicator(this);
+        this.cacheInterval = 0.1;
+        this.cacheTimer    = 0; // check if any units in range immediately
+        
+        this.readyUnits = new this.Units();
+        this.indicator  = new Indicator(this);
         
     }
     
     cycle(e) {
+    // TODO: Rework
+    if((this.cacheTimer-= e) <0){
+        this.cacheTimer    = this.cacheInterval
+        
+        // TODO: Should be replaced by controller fields
+        this.allControllerUnits     = W.units.filter(unit => unit.team === this.controller ).length;
+        this.allControllerBeacons   = W.beacons.filter(b => b.team === this.controller).length;
+        
+        this.detectedUnits = W.units.at(this,this.unitsDetectionRadius)
+        
+        let filtered         = this.detectedUnits.filter(u => u.team === this.controller,true)
+        this.controllerUnits = filtered[0];
+        this.foreignUnits    = filtered[1];
+    }
     
-        // TODO: Rework
-        if((this.cacheTimer-= e) <0){
-            this.cacheTimer = this.cacheInterval
-            this.closestUnits = W.units.at(this,this.unitsDetectionRadius)
-        }
-        if((this.cycleTimer -= e) < 0 ){
-            this.cycleTimer = this.cycleInterval
-            
-            let units       = this.closestUnits.at(this,this.conquerRadius);
-            let playerUnits = units.filter(unit =>  unit.team === PLAYER_TEAM);
-            let enemyUnits  = units.filter(unit => (unit.team === ENEMY_TEAM || unit.team === NEMESIS_TEAM) );
-          
-            let actualConqueringTeam;
-            let isConquering;
-            if (enemyUnits.length > playerUnits.length) {
-                actualConqueringTeam = enemyUnits[0].team;
-                isConquering = this.enemyTeamOwned < 1;
-                
+    let controllers     = this.controllerUnits.at(this,this.conquerRadius);
+    let foreigners      = this.foreignUnits.at(this,this.conquerRadius);
+    let conqueringTeams = foreigners.reduce((teams, unit) => {
+        teams.indexOf(unit.team) < 0 && teams.push(unit.team);
+        
+        return teams
+    } ,[]);
+        if(conqueringTeams.length > 1){ debugger }
+    
+    let equilibrium    = controllers.length === foreigners.length
+        || (controllers.length === 0 && foreigners.length === 0);
+        
+    let foreignersPrevail  = !equilibrium && foreigners.length > controllers.length || foreigners.totalHealth() > controllers.totalHealth();
+    let controllersPrevail = !equilibrium && !foreignersPrevail;
+    
+    
+  
+    if (equilibrium || controllersPrevail) {
+        this.conquered
+        = this.conqueror
+        = this.conqueringUnits
+        = undefined;
+    }
+    if (equilibrium) {
+        if(!this.controller || this.controller === NEUTRAL_TEAM){
+            if (this.control > 0) {
+                this.control-= e
             } else {
-                actualConqueringTeam = PLAYER_TEAM;
-                isConquering = this.playerTeamOwned < 1;
+                this.control = 0;
             }
-            
-            // render particles
-            this.nextParticle -= e;
-            if (this.nextParticle < 0 && isConquering) {
-                
-                this.nextParticle = 0.2;
-                // const unit = pick(actualConqueringTeam === PLAYER_TEAM ? playerUnits : enemyUnits);
-                const unit = pick(units);
-                const t = rand(0.5, 1.5);
-                particle(5, actualConqueringTeam.body, [
-                    ['x', unit.x, this.x, t, 0],
-                    ['y', unit.y, this.y, t, 0],
-                    ['s', 0, rand(5, 10), t]
-                ], true);
-            }
-               let playerOwnedSign = 0;
-            let enemyOwnedSign  = 0
-            
-            if (actualConqueringTeam === ENEMY_TEAM || actualConqueringTeam === NEMESIS_TEAM) {
-                playerOwnedSign = -1;
-                enemyOwnedSign = this.playerTeamOwned > 0 ? 0 : 1;
-            } else if (actualConqueringTeam === PLAYER_TEAM) {
-                enemyOwnedSign = -1;
-                playerOwnedSign = this.enemyTeamOwned > 0 ? 0 : 1;
-            } else if (units.length === 0) {
-                    playerOwnedSign =  this.team === PLAYER_TEAM ?  1 : -1;
-                    enemyOwnedSign  =  this.team === ENEMY_TEAM || this.team === NEMESIS_TEAM ? 1 :  -1;
-                // Otherwise, it means we have a tie, so let's not move ownership at all
-            }
-            
-            const factor = BEACON_CONQUER_SPEED_PER_UNIT * between(1, abs(playerUnits.length - enemyUnits.length), BEACON_MAX_CONQUERING_UNITS);
-            
-            this.playerTeamOwned  = max(0, min(1, this.playerTeamOwned + playerOwnedSign * factor * e));
-            this.enemyTeamOwned   = max(0, min(1, this.enemyTeamOwned + enemyOwnedSign * factor * e));
         }
-      
-
-    let newOwner;
-          if (this.playerTeamOwned === 1) {
-              newOwner            = PLAYER_TEAM;
-              this.conqueringTeam = playerUnits
-          } else if (this.enemyTeamOwned === 1) {
-              newOwner            = actualConqueringTeam;
-              this.conqueringTeam = enemyUnits;
-          } else if (!this.playerTeamOwned && !this.enemyTeamOwned) {
-              newOwner = NEUTRAL_TEAM;
-          }
+        else {
+            if (this.control <= this.controlCap) {
+                this.control+= this.lastConqueringFactor * e
+            } else {
+                this.control = this.controlCap;
+            }
+        }
+    }
+    if (foreignersPrevail) {
+        this.defended  = false;
+        this.conquered = this.conqueror = foreigners[0].team;
+        this.conqueringUnits = foreigners;
+        
+        let conqueringFactor = this.conqueringUnits
+          .sort((a,b) => b.conqueringSpeed - a.conqueringSpeed )
+          .slice(0,this.maxConquerors)
+          .reduce((factor, u) => factor + u.conqueringSpeed ,0);
           
-          
-          if (newOwner && newOwner !== this.team) {
-              this.oldOwner  = this.team;
-              this.team = newOwner;
-              // reset timer immediately
-              this.nextReinforcements = this.spawnInterval = this.team.reinforcementsInterval;
-              this.readyUnits = [] // reset available units
-              
+        if(!this.controller || this.controller === NEUTRAL_TEAM){
+            // retaking control of neutral
+                this.control+= conqueringFactor * e * .5
+                
+            if (this.control >= this.controlCap) {
+                this.control                = this.controlCap;
+                this.previousController     = this.controller;
+                this.controller             = this.conqueror
+                this.lastConqueringFactor   = conqueringFactor;
+                this.conqueredAnimation();
+                this.updateSpawnMachine();
+                this.indicateNewController();
+            }
+        }
+        else {
+            //  retaking control from enemy
+                this.control-= this.lastConqueringFactor * e * .5
+                
+            if (this.control <= 0) {
+              this.control                           = 0;
+              this.previousController                = this.controller
+              this.controller                        = NEUTRAL_TEAM // neutral controller
+              // this.controller.reinforcementsInterval = 10;
               this.conqueredAnimation();
-              
-              if(this.oldOwner === PLAYER_TEAM) {
-                 this.indicator.indicate('control over ' + this.Unit._name + ' is lost!', this.oldOwner.beacon, 3);
-              }
-              
-              if (newOwner === PLAYER_TEAM) {
-                  let replies = [this.Unit._name + ' factory is our!'].concat(this.conqueringTeam[0].replies)
-                  this.indicator.indicate(pick(replies),this.team.beacon, 2);
-                  
-                  this.conqueringTeam = null
-              } else {
-                  this.indicator.indicate('beacon is lost', this.oldOwner.beacon);
-              }
-              
-          }
-          // stop spawning once the total cap is reached
-          if (W.units.filter(unit => unit.team === this.team ).length > W.beacons.filter(b => b.team === this.team).length * G.levelId * 6 ) { return }
-          if ((this.nextReinforcements -= e) < 0) {
-            for (let i = 0; i < this.reinforcementsSize; i++) {
-                this.buildUnit()
+              this.updateSpawnMachine();
+              this.indicateNewController();
+            
             }
-            if (this.team === PLAYER_TEAM) {
-                this.indicator.indicate(' + ' +this.readyUnits.length + ' ' + (this.Unit._name || 'unit'),PLAYER_TEAM.beacon);
-            }
-            if (this.team === ENEMY_TEAM )  {
-                this.indicator.indicate('enemy reinforcements', this.team.beacon)
-            }
-            this.nextReinforcements = this.spawnInterval;
-         }
+        }
+
+    }
+    if (controllersPrevail) {
+        this.defended = true
+        // retaking control from neutral
+        if (this.control < this.controlCap) {
+            this.control+= this.lastConqueringFactor * e * 3;
+        } else {
+            this.control = this.controlCap
+        }
+    }
+    
+    
+    // stop spawning once the total cap is reached
+    if (this.allControllerUnits  > (this.allControllerBeacons + 1)  * G.levelId * 6 ) { return }
+    if ((this.nextReinforcements -= e) < 0) {
+    this.nextReinforcements = this.spawnInterval;
+        for (let i = 0; i < this.reinforcementsSize; i++) { this.buildUnit() }
+    }
+    }
+    
+    updateSpawnMachine(){
+        this.nextReinforcements = this.spawnInterval = this.controller.reinforcementsInterval;
+        this.readyUnits = new Units() // reset available units
+    }
+    
+    indicateNewController(){
+        if(this.previousController === PLAYER_TEAM) {
+            this.indicator.indicate('control over ' + this.Unit._name + ' is lost!',this.previousController.beacon,3); }
+        if (this.controller === PLAYER_TEAM) {
+            let replies = [this.Unit._name + ' factory is our!'].concat(this.detectedUnits.filter(u => u.team === this.controller)[0].replies)
+            this.indicator.indicate(pick(replies),this.controller.beacon,2);
+        } else {
+            this.indicator.indicate('beacon is lost', this.previousController.beacon);
+        }
     }
     
     buildUnit(){
-        const unit = new this.Unit();
-        unit.team = this.team;
+        const unit = this.Unit ? new this.Unit() : new Unit();
+        unit.team  = this.controller;
         this.readyUnits.push(unit);
+        if (this.controller === PLAYER_TEAM) { this.indicator.indicate(' + ' +this.readyUnits.length + ' ' + (this.Unit._name || 'unit'),PLAYER_TEAM.beacon) }
+        if (this.controller === ENEMY_TEAM )  { this.indicator.indicate('enemy reinforcements', this.controller.beacon) }
+
     }
     
     spawnUnits(){
@@ -183,13 +210,12 @@ class Beacon {
         while(this.readyUnits.length && i <= freePosAmount) {
             
             let unit = this.readyUnits.shift()
-            let exists;
-
+            
             unit.beacon = this;
             unit.x = this.x; // setting up its current location
             unit.y = this.y; //
             // TODO: spawn only if space is available
-            unit.setBehavior(this.team.behavior(this,freePositionsAround[i]));
+            unit.setBehavior(this.controller.behavior(this,freePositionsAround[i]));
             W.add(unit, CYCLABLE | RENDERABLE | UNIT);
             i++
         }
@@ -202,7 +228,7 @@ class Beacon {
             const beaconCol = ~~(this.x / GRID_SIZE);
             const radiusCells = ~~(this.conquerRadius / GRID_SIZE);
 
-            R.fillStyle = this.team.beacon;
+            R.fillStyle = this.controller.beacon;
             R.globalAlpha = 0.05;
 
             for (let row = beaconRow - radiusCells ; row < beaconRow + radiusCells ; row++) {
@@ -229,7 +255,7 @@ class Beacon {
 
         const s = (G.t % BEACON_CENTER_PERIOD) / BEACON_CENTER_PERIOD;
 
-        R.fillStyle = R.strokeStyle = this.team.beacon;
+        R.fillStyle = R.strokeStyle = this.controller.beacon;
         beginPath();
         arc(0, 0, BEACON_CENTER_RADIUS * s, 0, PI * 2, true);
         fill();
@@ -254,7 +280,7 @@ class Beacon {
 
     inReinforcementsButton(position) {
         const bounds = this.reinforcementsButtonBounds();
-        return this.readyUnits.length > 0 && this.team === PLAYER_TEAM
+        return this.readyUnits.length > 0 && this.controller === PLAYER_TEAM
         && isBetween(bounds.x, position.x, bounds.x + bounds.width)
         && isBetween(bounds.y, position.y, bounds.y + bounds.height);
     }
@@ -279,8 +305,8 @@ class Beacon {
 
     renderTimer (buttonBounds) {
         // render time below the beacon
-        drawCenteredText(this.Unit._name || REINFORCEMENTS_STRING,this.x,buttonBounds.y,BEACON_REINFORCEMENTS_BUTTON_CELL_SIZE,this.team.beacon,true);
-        drawCenteredText(this.reinforcementsSize + ' in ' + formatTime(this.nextReinforcements),this.x, buttonBounds.y + 14,BEACON_REINFORCEMENTS_BUTTON_CELL_SIZE,this.team.beacon,true);
+        drawCenteredText(this.Unit._name || REINFORCEMENTS_STRING,this.x,buttonBounds.y,BEACON_REINFORCEMENTS_BUTTON_CELL_SIZE,this.controller.beacon,true);
+        drawCenteredText(this.reinforcementsSize + ' in ' + formatTime(this.nextReinforcements),this.x, buttonBounds.y + 14,BEACON_REINFORCEMENTS_BUTTON_CELL_SIZE,this.controller.beacon,true);
     }
     
     renderReinforceButton(buttonBounds){
@@ -321,61 +347,68 @@ class Beacon {
         );
     }
     
-    postRender() {
+    postRender(e) {
         wrap(() => this.indicator.postRender());
-
-        if (this.oldOwner) {
-            const buttonBounds = this.reinforcementsButtonBounds();
-            
-            if (this.team !== PLAYER_TEAM) { this.renderTimer(buttonBounds) }
-            else if (this.readyUnits.length === 0    ) { this.renderTimer(buttonBounds) }
-            else { this.renderReinforceButton(buttonBounds) }
-        }
-        // Draw nothing if neutral
-        // if (this.team === NEUTRAL_TEAM && !this.oldOwner) {
-        //     drawCenteredText('x x x x x x x x', this.x, this.y + BEACON_REINFORCEMENTS_BUTTON_Y, BEACON_REINFORCEMENTS_BUTTON_CELL_SIZE, this.team.beacon, true)
-        // }
+     // render particles
+     
+        const buttonBounds = this.reinforcementsButtonBounds();
         
-        translate(this.x, this.y);
-
-        const s =  (G.t % BEACON_WAVE_PERIOD) / BEACON_WAVE_PERIOD;
-        R.strokeStyle = this.team.beacon;
-        R.lineWidth = 2;
-        R.globalAlpha = s;
-        beginPath();
-        arc(0, 0, 80 * (1 - s), 0, PI * 2, true);
-        stroke();
-
-        if (DEBUG) {
-            fillText(roundP(this.playerTeamOwned, 0.1) + ' - ' + roundP(this.enemyTeamOwned, 0.1), 0, 50);
+        if (this.controller !== PLAYER_TEAM      ) { this.renderTimer(buttonBounds) }
+        else if (this.readyUnits.length === 0    ) { this.renderTimer(buttonBounds) }
+        else { this.renderReinforceButton(buttonBounds) }
+        
+        this.nextParticle -= e;
+        if (this.nextParticle < 0 && this.conquered) {
+            let units = this.detectedUnits.at(this,this.conquerRadius);
+            this.nextParticle = 0.2;
+            // const unit = pick(actualConqueringTeam === PLAYER_TEAM ? playerUnits : enemyUnits);
+            const unit = pick(units) || units[0];
+            const t = rand(0.5, 1.5);
+            particle(5,this.conquered.body,[
+                ['x', unit.x, this.x, t, 0],
+                ['y', unit.y, this.y, t, 0],
+                ['s', 0, rand(5, 10), t]
+            ],true);
         }
-
-        const maxOwned = max(this.enemyTeamOwned, this.playerTeamOwned);
-        if (maxOwned && maxOwned < 1) {
-            R.globalAlpha = 1;
-            R.fillStyle = '#000';
-            fr(
-                -BEACON_GAUGE_WIDTH / 2 - 1,
-                -BEACON_GAUGE_RADIUS - 1,
-                evaluate(BEACON_GAUGE_WIDTH + 2),
-                evaluate(BEACON_GAUGE_HEIGHT + 2)
-            );
-
-            R.fillStyle = '#0f0';
-            fr(
-                -BEACON_GAUGE_WIDTH / 2 * this.playerTeamOwned,
-                -BEACON_GAUGE_RADIUS,
-                BEACON_GAUGE_WIDTH * this.playerTeamOwned,
-                BEACON_GAUGE_HEIGHT
-            );
-
-            R.fillStyle = '#f00';
-            fr(
-                -BEACON_GAUGE_WIDTH / 2 * this.enemyTeamOwned,
-                -BEACON_GAUGE_RADIUS,
-                BEACON_GAUGE_WIDTH * this.enemyTeamOwned,
-                BEACON_GAUGE_HEIGHT
-            );
+        
+        if (this.conquered) {
+            // Draw nothing if neutral
+            // if (this.controller === NEUTRAL_TEAM && !this.oldOwner) {
+            //     drawCenteredText('x x x x x x x x', this.x, this.y + BEACON_REINFORCEMENTS_BUTTON_Y, BEACON_REINFORCEMENTS_BUTTON_CELL_SIZE, this.controller.beacon, true)
+            // }
+            
+            translate(this.x, this.y);
+    
+            const s =  (G.t % BEACON_WAVE_PERIOD) / BEACON_WAVE_PERIOD;
+            R.strokeStyle = this.controller.beacon;
+            R.lineWidth = 2;
+            R.globalAlpha = s;
+            beginPath();
+            arc(0, 0, 80 * (1 - s), 0, PI * 2, true);
+            stroke();
+            
+            let color = '#f00';
+            if(this.controller !== PLAYER_TEAM && this.conqueror === PLAYER_TEAM) { color = '#0f0' }
+    
+            const maxOwned = this.control;
+            if (maxOwned >= 0 && maxOwned < this.controlCap) {
+                R.globalAlpha = 1;
+                R.fillStyle = '#000';
+                fr(
+                    -BEACON_GAUGE_WIDTH / 2 - 1,
+                    -BEACON_GAUGE_RADIUS - 1,
+                    evaluate(BEACON_GAUGE_WIDTH + 2),
+                    evaluate(BEACON_GAUGE_HEIGHT + 2)
+                );
+    
+                R.fillStyle = color;
+                fr(
+                    -BEACON_GAUGE_WIDTH / 2 * this.control,
+                    -BEACON_GAUGE_RADIUS,
+                    BEACON_GAUGE_WIDTH * this.control,
+                    BEACON_GAUGE_HEIGHT
+                );
+            }
         }
     }
 
@@ -398,11 +431,11 @@ class Beacon {
             const angle = rand(0, PI * 2);
             const dist = rand(100, 200);
             const t = rand(0.5, 1.5);
-            particle(5, this.team.body, [
+            particle(5,(this.controller && this.controller.body) || '#fff',[
                 ['x', this.x, this.x + cos(angle) * dist, t, 0, easeOutQuad],
                 ['y', this.y, this.y + sin(angle) * dist, t, 0, easeOutQuad],
                 ['s', rand(5, 10), 0, t]
-            ], true);
+            ],true);
         }
 
         const effect = {
@@ -412,7 +445,7 @@ class Beacon {
                 const beaconCol = ~~(this.x / GRID_SIZE);
                 const radiusCells = ceil(effect.radius / GRID_SIZE);
 
-                R.fillStyle = this.team.beacon;
+                R.fillStyle = this.controller.beacon;
                 R.globalAlpha = 0.2;
 
                 for (let row = beaconRow - radiusCells ; row < beaconRow + radiusCells ; row++) {
