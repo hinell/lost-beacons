@@ -20,11 +20,6 @@ body{
     vertical-align: middle
 }
 
-#cc{
-    margin: auto;
-    outline: 1px solid white;
-}
-
 #t, canvas{
     width: 100%;
     height: 100%;

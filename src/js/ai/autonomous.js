@@ -2,199 +2,181 @@ class Autonomous extends Behavior {
 
     constructor() {
         super();
-        this.nextCheck = 0;
         this.currentDecision = null;
+        
+        this.cycleInterval = 6;
+        this.cycleTimer    = 0; // cycle immediately
+        
+        this.cacheInterval = 3;
+        this.cacheTimer    = 0; // update cache immediately
+        
+        this.ourBeacons    = new Beacons();
+        this.enemyBeacons  = new Beacons();
     }
-
+    // cache of units
+    fetchBeaconPositions(){
+        let filtered            = W.beacons.filter(beacon => beacon.controller === this.unit.team,true);
+        this.ourBeacons         = filtered[0];
+        this.enemyBeacons       = filtered[1];
+        this.defendableBeacons  = this.ourBeacons
+            .closestTo(this.unit)
+            .filter(b => b.conquered)
+    }
+    
     attach(unit) {
         super.attach(unit);
-
-        this.updateSubBehavior();
     }
-
-    healthInArea(point, team, radius) {
-        // console.log(point, team, radius);
-        return W.units
-            .filter(c => c.team == team)
-            .filter(unit => dist(unit, point) < radius)
-            .reduce((health, unit) => health + unit.health, 0);
-    }
-
+    // too slow don't used it
+    
     retreatPosition() {
         const positions = [];
-        for (let i = 0 ; i < 10 ; i++) {
+        for (let i = 0 ; i < 5 ; i++) {
             const a = (i / 10) * PI * 2;
-            positions.push({
-                'x': this.unit.x + cos(a) * evaluate(UNIT_ATTACK_RADIUS * 4),
-                'y': this.unit.y + sin(a) * evaluate(UNIT_ATTACK_RADIUS * 4)
-            });
+            let position = {
+                'x': this.unit.x + cos(a) * this.unit.attackRadius,
+                'y': this.unit.y + sin(a) * this.unit.attackRadius
+                }
+            W.pointInObstacle(position) || positions.push(position);
         }
 
         // Return a position that is available and not close to any enemy
-        return pick(
-            positions
-                .filter(position => !W.pointInObstacle(position))
-                .filter(position => this.healthInArea(position, this.unit.team.enemy, UNIT_ATTACK_RADIUS * 2) <= 0)
-        );
+        return pick(positions)
     }
-
-    enemyUnit() {
-        return W.units
-            .filter(unit => unit.team == this.unit.team.enemy)
-            .filter(unit => this.healthInArea(unit, unit.team, UNIT_ATTACK_RADIUS * 2) <= this.healthAroundSelf())
-            .sort((a, b) => dist(a, this.unit) - dist(b, this.unit))[0];
+    
+    weakFridnlyUnit(){
+        // TODO: implement
+        this.closestFriends().closestTo(this.unit);
     }
-
-    friendlyUnit() {
-        return W.units
-            .filter(unit => unit != this.unit && unit.team == this.unit.team)
-            .filter(unit => this.healthInArea(unit, unit.team.enemy, UNIT_ATTACK_RADIUS * 2) <= 0)
-            .sort((a, b) => dist(a, this.unit) - dist(b, this.unit))[0];
-    }
-
-    conquerableBeacon() {
-        return W.beacons
-            .filter(beacon => beacon.team != this.unit.team)
-            .filter(beacon => this.healthInArea(beacon, this.unit.team.enemy, UNIT_ATTACK_RADIUS * 2) <= 0)
-            .sort((a, b) => dist(a, this.unit) - dist(b, this.unit))[0];
-    }
-
-    defendableBeacon() {
-        return W.beacons
-            .filter(beacon => beacon.team != this.unit.team.enemy) // beacons that are owned or neutral
-            .filter(beacon => this.healthInArea(beacon, this.unit.team.enemy, BEACON_CONQUER_RADIUS * 2) > 0)
-            .sort((a, b) => dist(a, this.unit) - dist(b, this.unit))[0];
-    }
-
-    healthAroundSelf() {
-        return this.healthInArea(this.unit, this.unit.team, UNIT_ATTACK_RADIUS * 2);
-    }
-
+    
     updateSubBehavior() {
-        if (this.currentDecision) {
-            if (!this.currentDecision.done() && !this.currentDecision.bad()) {
-                return;
-            }
-        }
+        if (this.currentDecision
+            && !this.currentDecision.done()
+            && !this.currentDecision.bad()
+        ) {return}
 
         let decisions = [];
-
-        const retreatPosition = this.retreatPosition();
+        
+        let retreatPosition;
+        if (this.unit.health < this.unit.healthSize) { retreatPosition = this.retreatPosition() }
         if (retreatPosition) {
             const retreatBehavior = new Reach(retreatPosition);
             const retreatDecision = {
                 'behavior': retreatBehavior,
                 'done': () => {
-                    return dist(retreatBehavior.target, this.unit) <= UNIT_ATTACK_RADIUS && this.healthInArea(this.unit, this.unit.team.enemy, UNIT_ATTACK_RADIUS) == 0;
+                    return this.unit.health < this.unit.healthSize && dist(retreatPosition, this.unit) <= this.unit.radius
                 },
                 'bad': () => {
-                    return this.healthInArea(retreatBehavior.target, this.unit.team.enemy, UNIT_ATTACK_RADIUS * 4) > 0;
+                    return this.unit.health === this.unit.healthSize && this.unit.closestEnemies.at(retreatPosition).length
                 }
             };
-            if (DEBUG) {
-                retreatDecision.label = 'retreat';
-            }
+            retreatDecision.label = 'retreatPosition';
             decisions.push(retreatDecision);
         }
-
-        const attackedUnit = this.enemyUnit();
+        
+        // enemy units that are near to this unit
+        const attackedUnit = this.unit.closestEnemies.closestTo(this.unit)[0];
         if (attackedUnit) {
-            const attackBehavior = new Chase(attackedUnit);
+            const attackBehavior = new Chase(attackedUnit, null, attackedUnit.attackRadius);
             const attackDecision = {
                 'behavior': attackBehavior,
                 'done': () => {
                     return attackedUnit.dead;
                 },
                 'bad': () => {
-                    return this.healthInArea(attackedUnit, attackedUnit.team, UNIT_ATTACK_RADIUS) > this.healthAroundSelf() + 2;
+                    let enemyHealth     = attackedUnit.closestFriends.totalHealth();
+                    let friendsHealth   = this.unit.closestFriends.totalHealth();
+                    return  enemyHealth > friendsHealth;
                 }
             };
-            if (DEBUG) {
-                attackDecision.label = 'attack';
-            }
+            attackDecision.label = 'attackedUnit';
             decisions.push(attackDecision);
         }
 
-        const friend = this.friendlyUnit();
-        if (friend) {
-            const regroupBehavior = new Chase(friend);
+        const friend = this.unit.closestFriends.closestTo(this.unit)[0];
+        if (friend && friend.firing) {
+            const regroupBehavior = new Chase(friend, null, friend.healRadius);
             const regroupDecision = {
                 'behavior': regroupBehavior,
                 'done': () => {
-                    return dist(friend, this.unit) < UNIT_ATTACK_RADIUS;
+                    return dist(friend, this.unit) < friend.healRadius;
                 },
                 'bad': () => {
-                    return this.healthInArea(friend, friend.team.enemy, UNIT_ATTACK_RADIUS) > this.healthInArea(friend, friend.team, UNIT_ATTACK_RADIUS) + 2;
+                    let enemyHealth     = friend.closestEnemies.totalHealth();
+                    let friendsHealth   = friend.closestFriends.totalHealth();
+                    return  !friend.firing && enemyHealth >= friendsHealth;
                 }
             };
-            if (DEBUG) {
-                regroupDecision.label = 'regroup';
-            }
             decisions.push(regroupDecision);
         }
 
-        const conquerableBeacon = this.conquerableBeacon();
+        const conquerableBeacon = pick(this.enemyBeacons);
         if (conquerableBeacon) {
             const conquerBehavior = new Reach(conquerableBeacon);
             const conquerDecision = {
+                beacon: conquerableBeacon,
                 'behavior': conquerBehavior,
                 'done': () => {
-                    return conquerableBeacon.team == this.unit.team;
+                    return conquerableBeacon.controller === this.unit.team;
                 },
                 'bad': () => {
-                    return this.healthInArea(conquerableBeacon, this.unit.team.enemy, UNIT_ATTACK_RADIUS) > this.healthInArea(conquerableBeacon, this.unit.team, UNIT_ATTACK_RADIUS) + 2;
+                 let enemyHealth     = conquerableBeacon.units.filter(u => this.unit.team !== u.team ).totalHealth();
+                 let friendsHealth   = conquerableBeacon.units.filter(u => this.unit.team === u.team ).totalHealth();
+                    return  enemyHealth > friendsHealth
                 }
             };
-            if (DEBUG) {
-                conquerDecision.label = 'conquer';
-            }
+            conquerDecision.label = 'conquerableBeacon';
             decisions.push(conquerDecision);
         }
-
-        const defendableBeacon = this.defendableBeacon();
+        const defendableBeacon = this.defendableBeacons[0];
         if (defendableBeacon) {
             const defendBehavior = new Reach(defendableBeacon);
             const defendDecision = {
+                beacon: defendableBeacon,
                 'behavior': defendBehavior,
                 'done': () => {
                     // Done if no one is trying to conquer it anymore
-                    return this.healthInArea(defendableBeacon, this.unit.team.enemy, BEACON_CONQUER_RADIUS) == 0;
+                    return !defendableBeacon.units.filter(u => u.team !== this.unit.team).length
                 },
                 'bad': () => {
-                    // Bad if enemies have a strong advantage
-                    return this.healthInArea(defendableBeacon, this.unit.team.enemy, UNIT_ATTACK_RADIUS) > this.healthInArea(defendableBeacon, this.unit.team, UNIT_ATTACK_RADIUS) + 2;
+                 let filtered        = defendableBeacon.units.filter(this.unit.isFriendly,true,this)
+                 let enemyHealth     = filtered[0].totalHealth();
+                 let friendsHealth   = filtered[1].totalHealth();
+                    return  enemyHealth > friendsHealth
                 }
             };
-            if (DEBUG) {
-                defendDecision.label = 'defend';
-            }
+            defendableBeacon.label = 'defendableBeacon';
             decisions.push(defendDecision);
         }
 
-        const goodDecisions = decisions.filter(decision => !decision.done() && !decision.bad());
-
-        const decision = pick(goodDecisions);
-        if (!decision) {
-            return;
-        }
-
+        
+        if (!decisions.length) { return }
+        let goodDecisions;
+            goodDecisions = decisions.filter(decision => !decision.done() && !decision.bad());
+        let decision;
+        if( goodDecisions.length === 1) { decision = goodDecisions[0]}
+        if(!decision) {  decision = pick(goodDecisions) } // try again
+        if(!decision && goodDecisions.length > 1) {  decision = pick(goodDecisions) } // and again
+        
+        if(!decision) { return }
         this.currentDecision = decision;
         this.subBehavior = this.currentDecision.behavior;
         this.subBehavior.attach(this.unit);
     }
-
+  
     cycle(e) {
-        super.cycle(e);
+        // super.cycle(e); temporary workaround for performance gain
 
-        this.nextCheck -= e;
-        if (this.nextCheck <= 0) {
-            this.nextCheck = 5;
+        if ((this.cacheTimer -= e) <= 0) { this.cacheTimer = this.cacheInterval; this.fetchBeaconPositions() }
+        if ((this.cycleTimer -= e) <= 0) {
+           this.cycleTimer = this.cycleInterval;
+           this.ourBeacons.length && this.ourBeacons
+            .filter(b => b.readyUnits.length )
+            .forEach(b => b.spawnUnits())
+            
             this.updateSubBehavior();
         }
-
-        if (this.subBehavior) {
-            this.subBehavior.cycle(e);
-        }
+        
+        if (this.subBehavior) this.subBehavior.cycle(e);
     }
 
     reconsider() {
@@ -202,9 +184,11 @@ class Autonomous extends Behavior {
     }
 
     render() {
-        if (DEBUG ) {
-            R.fillStyle = '#f00';
-            R.font = '10pt Arial';
+        
+        if (DEBUG && this.currentDecision) {
+            if(this.currentDecision.beacon) { this.currentDecision.beacon.debug('#ff0000') }
+            R.fillStyle = '#fdfff1';
+            R.font = '14px "Calibri Light",system-ui';
             R.textAlign = 'center';
             if (this.currentDecision) {
                 fillText(this.currentDecision.label, this.unit.x, this.unit.y + 35);

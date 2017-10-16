@@ -2,13 +2,15 @@ class SelectionCursor extends Cursor {
 
     constructor() {
         super();
-        this.selection = [];
+        this.selection = new Objects();
     }
 
     postRender() {
+      
         if (this.downPosition && dist(this, this.downPosition)) {
-            R.strokeStyle = '#0f0';
-            R.fillStyle = 'rgba(0,255,0,0.1)';
+            R.strokeStyle = '#33a12d';
+            R.fillStyle = 'rgba(108,161,95,0.1)';
+            
             R.lineWidth = 1;
             fr(
                 this.downPosition.x,
@@ -22,6 +24,14 @@ class SelectionCursor extends Cursor {
                 this.x - this.downPosition.x,
                 this.y - this.downPosition.y
             );
+          
+        if(this.units.length){
+            R.beginPath();
+            R.font = '14px bold Arial, sans-serif'
+            R.fillStyle = '#ffffff';
+            R.fillText(this.units.length,this.x + 15 ,this.y + 30)
+        }
+        
         }
     }
 
@@ -29,30 +39,18 @@ class SelectionCursor extends Cursor {
         // Not calling super cause otherwise it will try to revert to this cursor
         this.x = p.x;
         this.y = p.y;
-
-        if (this.downPosition) {
+        if(this.downPosition) {
             this.selection = W.units
-             .filter(unit => unit.team === PLAYER_TEAM) // only player team is available
              .filter(unit => {
                 if (dist(this, this.downPosition) < 5) {
                     return dist(unit, this.downPosition) < 20;
                 }
                 
-                return isBetween(this.downPosition.x, unit.x, this.x)
-                    && isBetween(this.downPosition.y, unit.y, this.y);
+                return unit.x.isBetween(this.downPosition.x, this.x)
+                    && unit.y.isBetween(this.downPosition.y, this.y);
                 });
         }
     }
-
-    // up() {
-    //     // this.selection = W.units.filter(unit => {
-    //     //     return unit.team === PLAYER_TEAM &&
-    //     //         isBetween(this.downPosition.x, unit.x, this.x) &&
-    //     //         isBetween(this.downPosition.y, unit.y, this.y);
-    //     // });
-    //
-    //     super.up();
-    // }
 
     get units() {
         return this.selection.filter(unit => !unit.dead);

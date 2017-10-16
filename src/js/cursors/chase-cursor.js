@@ -3,6 +3,7 @@ class ChaseCursor extends Cursor {
     constructor (){
         super();
         this.color = '#0f0'
+        this.target // only set when the unit is selected
     }
     
     postRender() {
@@ -69,18 +70,6 @@ class ChaseCursor extends Cursor {
         this.y = target.y;
     }
     
-    rightDown() {
-        if (this.target) {
-        let radius = G.selectionCursor.units.first.radius;
-        let positions = W.units.freeCirclePositions(this.target,radius)
-            G.selectionCursor.units.forEach((unit,i) => {
-            if (unit === this.target                 ) { return this.unit.setBehavior(new Idle())}
-            if (unit.behavior.target === this.target ) { return }
-                unit.setBehavior(new Chase(this.target, positions[i], unit.attackRadius ));
-                this.drawPositionCircles(unit.behavior.reservedPosition())
-            });
-            positions = null
-        }
-    }
-
+    rightDown() { /*implement in subclasses*/ }
+    
 }

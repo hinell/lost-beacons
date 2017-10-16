@@ -1,33 +1,26 @@
-class Camera {
+CAMERA_SPEED =  800;
 
+class Camera extends Object_ {
+    
     constructor() {
-        V = this;
-
-        this.x = 0;
-        this.y = 0;
+        super()
+        V = this; // bad practice
     }
 
     cycle(e) {
         const p = {'x': 0, 'y': 0};
-
-        if (w.down[37] || w.down[65] || w.down[81]) {
-            p.x = -1;
-        }
-        if (w.down[39] || w.down[68]) {
-            p.x = 1;
-        }
-        if (w.down[38] || w.down[87] || w.down[90]) {
-            p.y = -1;
-        }
-        if (w.down[40] || w.down[83]) {
-            p.y = 1;
-        }
-
+        // control by keyboard
+        if (w.down[37] || w.down[65] || w.down[81]) { p.x = -1; }
+        if (w.down[39] || w.down[68]) { p.x = 1; }
+        if (w.down[38] || w.down[87] || w.down[90]) { p.y = -1; }
+        if (w.down[40] || w.down[83]) { p.y = 1; }
+        
+        
         const xOnMap = (MOUSE_POSITION.x - (CANVAS_WIDTH - G.minimapWidth - MINIMAP_MARGIN)) / G.minimapWidth;
         const yOnMap = (MOUSE_POSITION.y - (CANVAS_HEIGHT - G.minimapHeight - MINIMAP_MARGIN)) / G.minimapHeight;
-        if (!isBetween(0, xOnMap, 1) || !isBetween(0, yOnMap, 1)) {
-            const xBetween = isBetween(CURSOR_MOVE_CAMERA_MARGIN, MOUSE_POSITION.x, CANVAS_WIDTH - CURSOR_MOVE_CAMERA_MARGIN);
-            const yBetween = isBetween(CURSOR_MOVE_CAMERA_MARGIN, MOUSE_POSITION.y, CANVAS_HEIGHT - CURSOR_MOVE_CAMERA_MARGIN);
+        if (!xOnMap.isBetween(0, 1) || !yOnMap.isBetween(0, 1)) {
+            const xBetween = MOUSE_POSITION.x.isBetween(CURSOR_MOVE_CAMERA_MARGIN, CANVAS_WIDTH - CURSOR_MOVE_CAMERA_MARGIN);
+            const yBetween = MOUSE_POSITION.y.isBetween(CURSOR_MOVE_CAMERA_MARGIN, CANVAS_HEIGHT - CURSOR_MOVE_CAMERA_MARGIN);
             if (!xBetween || !yBetween) {
                 if (!xBetween) {
                     p.x = MOUSE_POSITION.x > CANVAS_WIDTH / 2 ? 1 : -1;
@@ -49,15 +42,15 @@ class Camera {
     }
 
     get center() {
-        return {
-            'x': V.x + CANVAS_WIDTH / 2,
-            'y': V.y + CANVAS_HEIGHT / 2
-        };
+        return new Object_({
+              x : V.x + ~~(CANVAS_WIDTH / 2)
+            , y : V.y + ~~(CANVAS_HEIGHT / 2)
+        })
     }
 
-    contains(x, y, delta) {
-        return isBetween(this.x - delta, x, this.x + CANVAS_WIDTH + delta) &&
-            isBetween(this.y - delta, y, this.y + CANVAS_HEIGHT + delta);
+    contains(x, y, offsetFromPoint = GRID_SIZE) {
+        return x.isBetween(this.x - offsetFromPoint, this.x + CANVAS_WIDTH  + offsetFromPoint)
+            && y.isBetween(this.y - offsetFromPoint, this.y + CANVAS_HEIGHT + offsetFromPoint);
     }
 
 }

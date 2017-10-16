@@ -174,9 +174,6 @@ var defs = {
         [0,1,0],
         [0,1,0]
     ],
-    /*'\'': [
-        [1]
-    ],*/
     '.': [
         [0],
         [0],
@@ -324,12 +321,12 @@ var defs = {
         [0,1],
         [1,1]
     ],
-    '': [
-        [1, 0],
-        [0, 1],
-        [0, 1],
-        [0, 1],
-        [1]
+    '' : [
+        [0],
+        [0],
+        [0],
+        [0],
+        [0]
     ],
     '#': [
         [0, 1, 0, 1, 0],
@@ -373,27 +370,27 @@ if(DEBUG){
 // t: text
 // x: x coord
 // y: y coord
-// s: shadow offset
+// s: size
 // c: color
 // sh: render shadow
-function drawText(text, x, y, shadowOffset, color, sh) {
-    if (sh) {
-        drawText(text, x, y + shadowOffset , shadowOffset, '#000');
+function drawText(text, x, y, size, color, shadow) {
+    if (shadow) {
+        drawText(text, x, y + size , size, '#000');
     }
 
-    for(var i = 0 ; i < text.length ; i++){
+    for(let i = 0 ; i < text.length ; i++){
         if (DEBUG) {
             window.used[text.charAt(i)] = true;
         }
 
-        const cached = cachedCharacter(text.charAt(i), shadowOffset, color);
+        const cached = cachedCharacter(text.charAt(i), size, color);
         R.drawImage(cached, x, y);
-        x += cached.width + shadowOffset;
+        x += cached.width + size;
     }
 }
 
-function drawCenteredText(t, x, y, s, c, sh) {
-    return drawText(t, x - s * requiredCells(t) / 2, y, s, c, sh);
+function drawCenteredText(text, x, y, size, color, shadow) {
+    return drawText(text, x - size * requiredCells(text) / 2, y, size, color, shadow);
 }
 
 // Returns the total cells required to draw the specified text

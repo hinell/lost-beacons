@@ -1,3 +1,8 @@
+INDICATOR_MARGIN          = 80;
+INDICATOR_LABEL_CELL_SIZE = 2;
+INDICATOR_PADDING         = 10;
+INDICATOR_ARROW_SIZE      = 10;
+
 class Indicator {
 
     constructor(target) {
@@ -7,7 +12,7 @@ class Indicator {
     }
 
     indicate(label, color, duration = 4) {
-        if (label != this.label) {
+        if (label !== this.label) {
             this.indicateTime = G.t;
         }
 

@@ -1,4 +1,4 @@
-function fakeMouse(x, y, clickType) {
+function fakeMouse(x, y, clickType, e) {
     wrap(() => {
         translate(x, y);
 
@@ -31,3 +31,4 @@ function fakeMouse(x, y, clickType) {
         }
     });
 }
+

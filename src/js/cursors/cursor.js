@@ -10,14 +10,14 @@ class Cursor {
         // implement in subclasses
     }
 
-    get color() {
-        // implement in subclasses
-    }
-
     down(p) {
         this.downPosition = p;
     }
 
+    wheelDown(p) {
+        // TODO
+    }
+    
     rightDown() {
         // implement in subclasses
     }
@@ -39,21 +39,21 @@ class Cursor {
         this.downPosition = null;
     }
 
-    renderLabel(s) {
+    renderLabel(s,relativePoint) {
         function sign(x) {
             return x > 0 ? 1 : x < 0 ? - 1 : 0;
         }
 
-        const center = V.center;
+        const center = relativePoint || V.center;
         let a = -PI / 3;
 
-        if (center.x < this.x) {
+        if (center.x > this.x) {
             a = -PI / 2 - PI / 6;
         } else {
             a = -PI / 3;
         }
 
-        if (center.y > this.y) {
+        if (center.y < this.y) {
             a *= -1;
         }
 

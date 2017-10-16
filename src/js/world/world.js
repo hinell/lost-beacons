@@ -1,3 +1,9 @@
+MINIMAP_SCALE =  0.05;
+MINIMAP_MARGIN =  20;
+
+HUD_SCORE_CELL_SIZE =  2;
+HUD_GAUGE_GAP =  80;
+HUD_HEIGHT =  50;
 function copyMap(map) {
     return map.map(row => row.slice());
 }
@@ -8,26 +14,63 @@ class World {
         W = this;
 
         W.t = 0;
-        W.cyclables = [V];
-        W.units = [];
-        W.beacons = [];
-        W.renderables = [];
+        W.cyclables = new Objects(); // all objects on the map
+        W.units   = new Units();
+        W.beacons = new Beacons();
+        W.renderables = new Objects(); // renderable objects
 
         W.initialize();
-        W.volumes = [];
-
-        const polygonColor = () => random() < 0.1 ? '#147' : '#158';
+        W.volumes = new Objects();
+        
+        let hsl = (a,s = 0,l = 0) => `hsl(${a[0]},${a[1] + s}%,${a[2] + l}%)`;
+        this.mapThemes = [
+                [10 , 50, 20]
+              , [15 , 50, 20]
+              , [20 , 50, 20]
+              , [40 , 50, 20]
+              , [50 , 50, 20]
+              , [100, 40, 17]
+              , [105, 40, 17]
+              , [132, 40, 17]
+              , [159, 50, 20]
+              , [177, 40, 20]
+              , [195, 50, 20]
+              , [200, 50, 20]
+              , [205, 50, 20]
+              , [210, 50, 20]
+              , [220, 50, 20]
+              , [270, 40, 20]
+              , [340, 50, 17]
+            ]
+            
+        this.theme = [rand(0,360),pick([40,50]),pick([17,20])]
+        this.color = hsl(this.theme);
+        this.secondColor  = hsl(this.theme,0,2)
+        this.stroke = hsl(this.theme,0,20) || GRID_COLOR;
 
         // TODO maybe use reduce?
-        W.matrix.forEach((r, row) => {
+        let cubeObj;
+        W.map = W.matrix.forEach((r, row) => {
             r.forEach((e, col) => {
                 for (let i = 0 ; i < e ; i++) {
-                    W.volumes.push(cube(col * GRID_SIZE, row * GRID_SIZE, GRID_SIZE, GRID_SIZE, i * GRID_SIZE, polygonColor()));
+                     cubeObj = cube(
+                        col * GRID_SIZE // x
+                      , row * GRID_SIZE // y
+                      , GRID_SIZE // width
+                      , GRID_SIZE // height
+                      , GRID_SIZE * i  // vertical position on z axis
+                      ).map( (polygon) => {
+                        polygon.color = this.secondColor;
+                        polygon.stroke = this.stroke;
+                        return polygon
+                      })
+
+                    W.volumes.push(cubeObj);
                 }
             });
         });
-
-        W.polygons = [];
+        
+        W.polygons = new Objects();
         W.volumes.forEach(v => v.forEach(p => W.polygons.push(p)));
 
         const polygonCountByHash = {};
@@ -40,78 +83,280 @@ class World {
             return polygonCountByHash[polygon.hash()] == 1;
         });
 
+        // heavy rendered when used too many polygons
         W.animatePolygons(0, 1);
-
         this.flashAlpha = 1;
         interp(W, 'flashAlpha', 1, 0, 1);
-    }
+        
+                // Generates grid for map
+        W.floorPattern = cache(GRID_SIZE * 5, GRID_SIZE * 5, (r, c) => {
+            r.fillStyle = this.color;
+            r.fr(0, 0, c.width, c.height);
 
-    // Creates a squad of the specified size at the specified position
-    squad(x, y, team, size) {
-        if (!size) {
-            return;
-        }
-
-        const position = pick(W.firstFreePositionsAround(
-            {'x': x, 'y': y},
-            W.units,
-            UNIT_RADIUS
-        ));
-
-        const unit = new Unit();
-        unit.x = position.x;
-        unit.y = position.y;
-        unit.team = team;
-        unit.setBehavior(team.behavior(unit));
-        W.add(unit, CYCLABLE | RENDERABLE | UNIT);
-
-        this.squad(x, y, team, size - 1);
-    }
-
-    // Both subclasses will implement, no need to declare it
-    // initialize() {
-    //
-    // }
-
-    spawnBeacon() {
-        const beacon = new Beacon();
-        while(true) {
-            do {
-                beacon.x = roundP(random() * W.width, GRID_SIZE);
-                beacon.y = roundP(random() * W.height, GRID_SIZE);
-            } while(W.hasObstacle(beacon.x, beacon.y, 2));
-
-            if (!W.cyclables.filter(c => c.team && dist(c, beacon) < BEACON_SPACING_RADIUS).length) {
-                break;
+            r.globalAlpha = 0.05;
+            r.fillStyle = stroke || '#ffffff';
+            for (let x = 0 ; x < c.width ; x += GRID_SIZE / 2) {
+                r.fr(0, x, c.width, 1);
+                r.fr(x, 0, 1, c.height);
             }
-        }
 
-        W.add(beacon, CYCLABLE | RENDERABLE | BEACON | FIRST);
+            r.globalAlpha = 0.5;
+            r.fillStyle = stroke || '#fff';
+            r.shadowColor = 'rgba(255,255,255, 0.2)';
+            r.shadowBlur = 3;
+            for (let x = 0 ; x < c.width ; x += GRID_SIZE) {
+                r.fr(0, x, c.width, 1);
+                r.fr(x, 0, 1, c.height);
+            }
+
+            r.shadowBlur = 0;
+
+            // + signs
+            r.globalAlpha = 0.5;
+            r.fillStyle = '#ffffff';
+            r.fr(GRID_SIZE, GRID_SIZE - 7, 1, 14);
+            r.fr(GRID_SIZE - 7, GRID_SIZE, 14, 1);
+            
+            r.globalAlpha = 0.02;
+            r.fr(GRID_SIZE * 3, GRID_SIZE * 4, GRID_SIZE, GRID_SIZE);
+            r.fr(GRID_SIZE * 4, GRID_SIZE * 2, GRID_SIZE, GRID_SIZE);
+            r.fr(GRID_SIZE * 1, GRID_SIZE * 3, GRID_SIZE, GRID_SIZE);
+
+            return r.createPattern(c, 'repeat');
+        });
+        
+        this.gridPattern = cache(1, 4, (r, c) => {
+            r.fillStyle = 'rgba(0,0,0,.2)';
+            r.fr(0, 0, 1, 1);
+            return r.createPattern(c, 'repeat');
+        });
+
+        this.hudGradient = R.createLinearGradient(0, 0, 0, HUD_HEIGHT);
+        this.hudGradient.addColorStop(0, 'rgba(0,0,0,0)');
+        this.hudGradient.addColorStop(1, 'rgba(0,0,0,0.5)');
+
+        this.hudBg = R.createLinearGradient(0, 0, 0, HUD_HEIGHT);
+        this.hudBg.addColorStop(0, W.stroke || '#035');
+        this.hudBg.addColorStop(1, W.color || '#146');
+    }
+    
+    // Creates a squad of the specified size at the specified position
+    
+    spawnSquad(position, units, controller){
+        W.units
+        .freeCirclePositions(position,units[0].radius, units[0].radius * 5,units.length)
+        // .allocateRectanglePositions({x: x, y: y},~~(units.length * .4),~~(units.length * .6), units[0].radius * 2)
+        .forEach((position,i,arr) => {
+        let unit;
+          if(!(unit = units[i])) { return };
+          unit.x = position.x;
+          unit.y = position.y;
+          unit.setBehavior((controller || unit.team).behavior(position)); // set default unit behaviour
+          W.add(unit, UNIT | CYCLABLE | RENDERABLE)
+        })
+    }
+    
+    createSquad(team,size,UnitConstructor = Unit) {
+      
+      let units = new Units()
+      for (let i = 0; i < size; i++) {
+        let unit      = new UnitConstructor({team: team});
+            unit.team = team
+            units.surcol = units;
+            units.push(unit)
+      }
+      return units
+ 
+    }
+    
+    positionBeacons(beacons,width,height) {
+
+        // position the beacon randomly
+        //if(beacons.length === 1) {
+        //    beacon.x = roundP(rand() *( W.width  - beacon.conquerRadius * 2),GRID_SIZE);
+        //    beacon.y = roundP(rand() *( W.height - beacon.conquerRadius * 2),GRID_SIZE);
+        //    return beacons.push(beacon);
+        //}
+            width   = width || W.width;
+            height  = height|| W.height;
+      
+        let minDistance = BEACON_SPACING_RADIUS
+        let maxDistance = minDistance + GRID_SIZE
+        
+        let distBetweenTwoBeacons, noObstacle, farFromOthers;
+        let i = 1000 * 10;
+        beacons.forEach(function (beacon){
+            while(true) {
+              beacon.x = ~~(random() * (width  - BEACON_SPACING_RADIUS));
+              beacon.y = ~~(random() * (height - BEACON_SPACING_RADIUS));
+              
+              noObstacle    = !W.hasObstacle(beacon.x,beacon.y, 2);
+              farFromOthers = beacons.every(b => {
+                distBetweenTwoBeacons = dist(b,beacon);
+                return  distBetweenTwoBeacons <= maxDistance || distBetweenTwoBeacons >= minDistance
+              });
+              
+              if(farFromOthers && noObstacle) { W.add(beacon); break }
+              if (!beacons.filter(u => dist(u, beacon) < BEACON_SPACING_RADIUS).length) {
+              break;
+              }
+            }
+        })
+
     }
 
-    render() {
+
+    renderMinimap() {
         wrap(() => {
+            translate(
+                CANVAS_WIDTH    - W.width   * MINIMAP_SCALE - MINIMAP_MARGIN
+            ,   CANVAS_HEIGHT   - W.height  * MINIMAP_SCALE - MINIMAP_MARGIN
+            );
+            
+            // obstacles
+            R.fillStyle = '#bebebe';
+            R.globalAlpha = 1;
+            // 4ms
+            let row, r, col, x;
+            for (row = 0; row < W.matrix.length; row++) {
+                r = W.matrix[row];
+                for (col = 0; col < r.length; col++) {
+                  x = r[col];
+                  if(x){
+                        fr(
+                            round(col * GRID_SIZE * MINIMAP_SCALE),
+                            round(row * GRID_SIZE * MINIMAP_SCALE),
+                            round(MINIMAP_SCALE * GRID_SIZE),
+                            round(MINIMAP_SCALE * GRID_SIZE)
+                        );
+                      }
+                  }
+            }
+            
+            // viewport window on the minimap
+            R.lineWidth = 1;
+            R.strokeStyle = '#fffbf9';
+            R.globalAlpha = 0.2;
+
+            R.globalAlpha = 1;
+            strokeRect(
+                ~~(V.x * MINIMAP_SCALE) + 0.5,
+                ~~(V.y * MINIMAP_SCALE) + 0.5,
+                ~~(CANVAS_WIDTH * MINIMAP_SCALE),
+                ~~(CANVAS_HEIGHT * MINIMAP_SCALE)
+            );
+
+            R.globalAlpha = 1;
+            W.units
+                .forEach(c => {
+                    R.beginPath();
+                    R.strokeStyle = R.fillStyle = c.team.body;
+                    let x = c.x * MINIMAP_SCALE - 2;
+                    let y = c.y * MINIMAP_SCALE - 2;
+                        R.arc(x, y, 1, 0, 2 * PI);
+                        R.stroke()
+                });
+    
+            W.beacons
+                .forEach(beacon => {
+                    R.fillStyle = beacon.controller ? beacon.controller.beacon : '#fff' ;;
+                    wrap(() => {
+                        translate(beacon.x * MINIMAP_SCALE, beacon.y * MINIMAP_SCALE);
+                        squareFocus(8, 4,0.5);
+                    });
+                });
+
+            R.lineWidth = 1;
+            R.strokeStyle = '#000';
+            strokeRect(0.5, 0.5, ~~(W.width * MINIMAP_SCALE), ~~(W.height * MINIMAP_SCALE));
+        });
+    }
+
+    gauge (x, y, value, width, sign, color) {
+        const w = (5 + width) * sign;
+        let centerY = HUD_SCORE_CELL_SIZE / 2;
+
+        R.fillStyle = '#000';
+        fr(x + 2, y + 2 + centerY, w, HUD_SCORE_CELL_SIZE * 3);
+
+        R.fillStyle = color;
+        fr(x, y + centerY, w, HUD_SCORE_CELL_SIZE * 3);
+
+        drawCenteredText('' + value, x + w + sign * 15, y, HUD_SCORE_CELL_SIZE, color, true);
+    }
+    renderHUD(e) {
+        wrap(() => {
+            translate(CANVAS_WIDTH / 2, CANVAS_HEIGHT - HUD_HEIGHT);
+
+            if(this.enableHUDBack){
+                R.fillStyle = G.hudGradient;
+                fr(-CANVAS_WIDTH / 2, 0, CANVAS_WIDTH, HUD_HEIGHT);
+    
+                R.fillStyle = this.hudBg;
+                R.strokeStyle = '#000';
+                beginPath();
+                moveTo(-220, HUD_HEIGHT);
+                lineTo(-170, 0.5);
+                lineTo(170, 0.5);
+                lineTo(220, HUD_HEIGHT);
+                fill();
+                stroke();
+            }
+
+            drawCenteredText('beacons', 0, 3, HUD_SCORE_CELL_SIZE, '#fff', true);
+            this.gauge(-HUD_GAUGE_GAP / 2, 3, G.beaconsScore(PLAYER_TEAM), G.beaconsScore(PLAYER_TEAM) / W.beacons.length * 100, -1, '#0f0');
+            this.gauge(HUD_GAUGE_GAP /  2, 3, G.beaconsScore(ENEMY_TEAM) , G.beaconsScore(ENEMY_TEAM) / W.beacons.length * 100, 1  , '#f00');
+            
+            drawCenteredText('units', 0, 18, HUD_SCORE_CELL_SIZE, '#fff', true);
+            let playerUnits = G.unitsScore(PLAYER_TEAM);
+            let enemyUnits = G.unitsScore(ENEMY_TEAM);
+            let maxUnits = max(playerUnits, enemyUnits);
+
+            this.gauge(-HUD_GAUGE_GAP / 2, 18, G.unitsScore(PLAYER_TEAM), G.unitsScore(PLAYER_TEAM) / maxUnits * 100, -1, '#0f0');
+            this.gauge(HUD_GAUGE_GAP / 2 , 18, G.unitsScore(ENEMY_TEAM), G.unitsScore(ENEMY_TEAM) / maxUnits * 100, 1, '#f00');
+            
+            drawCenteredText('available', 0, 33, HUD_SCORE_CELL_SIZE, '#fff', true);
+            let availableUnitsPlayer = W.beacons.filter(b => b.controller === PLAYER_TEAM ).reduce((availUnits,b) => availUnits+b.readyUnits.length ,0);
+            let availableUnitsEnemy  = W.beacons.filter(b => b.controller === ENEMY_TEAM ).reduce((availUnits,b) => availUnits+b.readyUnits.length ,0);
+                if(availableUnitsPlayer > 999) { availableUnitsPlayer = 999 }
+                if(availableUnitsEnemy  > 999) { availableUnitsEnemy  = 999 }
+                
+            this.gauge(-HUD_GAUGE_GAP / 2, 33, availableUnitsPlayer, availableUnitsPlayer / maxUnits * 100 , -1, '#0f0');
+            this.gauge(HUD_GAUGE_GAP / 2 , 33, availableUnitsEnemy,  availableUnitsEnemy  / maxUnits * 100, 1, '#f00');
+        });
+    }
+    
+    render(e) {
+        wrap(() => {
+            // move the canvas by the camera
             translate(-~~V.x, -~~V.y);
 
             // Grid on the floor
-            R.fillStyle = G.floorPattern;
+            R.fillStyle = W.floorPattern;
             fr(V.x, V.y, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-            // Renderables (units, particles...)
-            W.renderables.forEach(e => e.render && wrap(() => e.render()));
-
-            // Polygons (obstacles)
-            W.polygons.filter(function(p) {
-                if (abs(p.center.x - V.center.x) > CANVAS_WIDTH / 2 + GRID_SIZE / 2 ||
-                    abs(p.center.y - V.center.y) > CANVAS_HEIGHT / 2 + GRID_SIZE / 2) {
-                    return false;
+            // Renderables (units, particles...) that are in camera scope
+            W.renderables
+            .forEach(r => {
+                if(r.render){
+                    // TODO: Don't forget this
+                    if(r instanceof Unit && r.behavior instanceof Reach) { return wrap(() => r.render(e)) } // render path
+                    if((r.x || r.y) && V.contains(r.x,r.y,10)){ wrap(() => r.render(e)) }
+                    else { wrap(() => r.render(e)) }
                 }
-                return p.renderCondition(V.center);
-            }).sort((a, b) => {
-                return dist(b.center, V.center) - dist(a.center, V.center);
-            }).forEach(p => p.render());
+            });
+            // Polygons (obstacles)
+            W.polygons
+            .forEach(function(p) {
+                if((p.x || p.y) && V.contains(p.x,p.y) && p.renderCondition(V.center)){ p.render() }
+            })
 
-            W.renderables.forEach(e => e.postRender && wrap(() => e.postRender()));
+            W.renderables.forEach(r => {
+                if(r.postRender){
+                    if (r.x || r.y) { V.contains(r.x,r.y,10) && wrap(() => r.postRender(e)) }
+                    else { wrap(() => r.postRender(e)) }
+                }
+            });
         });
 
         if (W.flashAlpha) {
@@ -121,10 +366,7 @@ class World {
                 fr(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
             });
         }
-
-        if (W.renderHUD) {
-            W.renderHUD();
-        }
+      
 
         R.fillStyle = 'rgba(255,255,255,.15)';
         fr(0, ~~(G.t * 100) % CANVAS_HEIGHT * 1.5, CANVAS_WIDTH, 0.5);
@@ -133,12 +375,9 @@ class World {
         fr(0, ~~(G.t * 50) % CANVAS_HEIGHT * 1.5 - 100, CANVAS_WIDTH, 100);
 
 
-        R.fillStyle = G.gridPattern;
+        R.fillStyle = this.gridPattern;
         fr(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-        if (W.renderMinimap) {
-            W.renderMinimap();
-        }
+      
     }
 
     get width() {
@@ -148,37 +387,51 @@ class World {
     get height() {
         return W.matrix.length * GRID_SIZE;
     }
+    
+    get center() {
+        return {x : floorP(this.width / 2) , y : floorP(this.height / 2)}
+    }
 
-    add(element, types) {
-        const method = types & FIRST ? 'unshift' : 'push';
-
-        if (types & CYCLABLE) {
-            W.cyclables[method](element);
+    add(instance, types) {
+        let method = types & FIRST ? 'unshift' : 'push'
+        
+        switch (true) {
+          case instance instanceof Beacon:
+          
+            this.beacons.unshift(instance);
+            this.cyclables.unshift(instance);
+            this.renderables.unshift(instance);
+            
+          break;
+          case instance instanceof Unit:
+            this.units.push(instance);
+            this.cyclables.push(instance);
+            this.renderables.push(instance);
+          break;
+          case !!instance.render:
+          case !!instance.postRender:
+            this.cyclables[method](instance);
+            this.renderables[method](instance);
+          break;
+          default:
+            this.cyclables[method](instance);
+          break;
         }
-
-        if (types & RENDERABLE) {
-            W.renderables[method](element);
-        }
-
-        if (types & UNIT) {
-            W.units[method](element);
-        }
-
-        if (types & BEACON) {
-            W.beacons[method](element);
-        }
+      
     }
 
     remove(element) {
-        W.cyclables.remove(element);
-        W.renderables.remove(element);
-        W.units.remove(element);
-        W.beacons.remove(element);
+        if(element.cycle){ W.cyclables.remove(element); }
+        if(element.render || element.postRender){ W.renderables.remove(element) };
+        if(element instanceof Unit){ W.units.remove(element) };
+        if(element instanceof Beacon){ W.beacons.remove(element) };
     }
 
     cycle(e) {
         W.t += e;
-        W.cyclables.slice().forEach(x => x.cycle(e));
+        V.cycle(e)
+        W.cyclables.forEach(x => x.cycle && x.cycle(e));
+
     }
 
     isOut(x, y) {
@@ -187,12 +440,12 @@ class World {
 
     hasObstacle(x, y, radius = 0) {
         if (!radius) {
-            return W.pointInObstacle({'x': x, 'y': y});
+            return W.pointInObstacle({x,y});
         }
 
         return [
-            {'x': x - radius, 'y': y - radius},
             {'x': x - radius, 'y': y + radius},
+            {'x': x - radius, 'y': y - radius},
             {'x': x + radius, 'y': y - radius},
             {'x': x + radius, 'y': y + radius}
         ].filter(pt => {
@@ -201,7 +454,9 @@ class World {
     }
 
     pointInObstacle(pt) {
-        return W.isOut(pt.x, pt.y) || W.matrix[~~(pt.y / GRID_SIZE)][~~(pt.x / GRID_SIZE)];
+        let row = W.matrix[~~(pt.y / GRID_SIZE)];
+        if(!row) { return 1 } // if no map row consider it as obstacle
+        return W.isOut(pt.x, pt.y) || row[~~(pt.x / GRID_SIZE)];
     }
 
     hasObstacleAtCell(cell) {
@@ -213,18 +468,20 @@ class World {
      * @param endPosition: End position (x, y)
      * @param endCondition: Function that should return true if the position is considered final
      */
-    findPath(start, end, endCondition) {
+    constructPath(start,endpoint,endCondition) {
+        // start position is half of a grid cell size
         let solution = W.aStar({
             'row': ~~(start.y / GRID_SIZE),
             'col': ~~(start.x / GRID_SIZE)
         }, {
-            'row': ~~(end.y / GRID_SIZE),
-            'col': ~~(end.x / GRID_SIZE)
+            'row': ~~(endpoint.y / GRID_SIZE),
+            'col': ~~(endpoint.x / GRID_SIZE)
         }, cell => endCondition({
             'x': (cell.col + 0.5) * GRID_SIZE,
             'y': (cell.row + 0.5) * GRID_SIZE
         }));
-
+        // iterate unless latest parent is reached
+        // meaning point is the endpoint of the path
         if (solution) {
             const path = [];
             while (solution) {
@@ -235,7 +492,7 @@ class World {
                 solution = solution.parent;
             }
 
-            path[path.length - 1] = {'x': end.x, 'y': end.y};
+            path[path.length - 1] = {'x': endpoint.x, 'y': endpoint.y};
             if (path.length > 1) {
                 path.shift(); // kinda risky, but the first step is very often a step back
             }
@@ -276,9 +533,9 @@ class World {
             if (endCondition(expandedCell)) { // are we within shooting radius?
                 return expandedCell; // TODO use raycasting instead
             }
-
+            
             expandedMap[expandedCell.row][expandedCell.col] = 1;
-
+  
             const top = {'row': expandedCell.row - 1, 'col': expandedCell.col};
             const bottom = {'row': expandedCell.row + 1, 'col': expandedCell.col};
             const left = {'row': expandedCell.row, 'col': expandedCell.col - 1};
@@ -413,50 +670,11 @@ class World {
         }
     }
 
-    positionsAround(position, radius, minDistance) {
-        if (!radius) {
-            return [position];
-        }
-
-        const perimeter = 2 * PI * radius;
-        const divisions = ~~(perimeter / minDistance);
-
-        const positions = [];
-        for (let i = 0 ; i < divisions ; i++) {
-            const angle = (i / divisions) * 2 * PI;
-            positions.push({
-                'x': position.x + cos(angle) * radius,
-                'y': position.y + sin(angle) * radius
-            });
-        }
-
-        return positions;
-    }
-
-    firstFreePositionsAround(position, forbidden, forbiddenRadius = GRID_SIZE) {
-        for (let radius = 0 ; radius < GRID_SIZE * 10 ; radius += forbiddenRadius) {
-            const positions = W.positionsAround(position, radius, forbiddenRadius)
-                // Is this position even available?
-                .filter(position => !W.hasObstacle(position.x, position.y, forbiddenRadius / 2))
-                // Is this position in the forbidden list?
-                .filter(position => {
-                    return !forbidden.filter(forbiddenPosition => {
-                        return dist(forbiddenPosition, position) < forbiddenRadius;
-                    }).length;
-                });
-
-            if (positions.length) {
-                return positions;
-            }
-        }
-
-        return [];
-    }
-
     hasObstacleBetween(a, b) {
         const d = dist(a, b);
         const cast = W.castRay(a, angleBetween(a, b), d);
-        return dist(a, cast) < d;
+        // if cast is null it means target b is out of map
+        return cast && dist(a, cast) < d;
     }
 
     animatePolygons(from, to) {
@@ -468,5 +686,8 @@ class World {
             });
         });
     }
-
+  
+    initialize() {
+        // implement in subclasses
+    }
 }

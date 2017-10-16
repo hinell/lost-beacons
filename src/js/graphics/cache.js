@@ -1,5 +1,5 @@
 function cache(w, h, f) {
-    var c = D.createElement('canvas');
+    let c = D.createElement('canvas')
     c.width = w;
     c.height = h;
 

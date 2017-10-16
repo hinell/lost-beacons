@@ -6,11 +6,14 @@ function avgProp(array, property) {
 
 class Polygon {
 
-    constructor(pts, color, renderCondition) {
+    constructor(x,y,pts, renderCondition) {
+        this.x = x;
+        this.y = y;
         this.pts = pts;
-        this.color = color;
-        this.renderCondition = renderCondition;
+        this.color = 'hsl(0,0%,50%)';
+        this.stroke = '#fff';
         this.alpha = 1;
+        this.renderCondition = renderCondition;
 
         this.center = {
             'x': avgProp(pts, 'x'),
@@ -18,7 +21,7 @@ class Polygon {
             'z': avgProp(pts, 'z'),
         };
 
-        this.perspective = PERSPECTIVE;
+        this.perspective = PERSPECTIVE || 400;
     }
 
     // Returns the 2D coordinates of a 3D point
@@ -37,7 +40,7 @@ class Polygon {
         wrap(() => {
             R.globalAlpha = this.alpha;
             R.fillStyle = this.color;
-            R.strokeStyle = GRID_COLOR;
+            R.strokeStyle = this.stroke;
             R.lineWidth = 1;
             R.lineJoin = 'round';
             beginPath();
