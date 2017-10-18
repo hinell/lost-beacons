@@ -7,7 +7,7 @@ class SelectionCursor extends Cursor {
 
     postRender() {
       
-        if (this.downPosition && dist(this, this.downPosition)) {
+        if (this.downPosition && this.distanceTo(this.downPosition)) {
             R.strokeStyle = '#33a12d';
             R.fillStyle = 'rgba(108,161,95,0.1)';
             
@@ -41,9 +41,10 @@ class SelectionCursor extends Cursor {
         this.y = p.y;
         if(this.downPosition) {
             this.selection = W.units
+             .filter(unit => unit.team === PLAYER_TEAM)
              .filter(unit => {
-                if (dist(this, this.downPosition) < 5) {
-                    return dist(unit, this.downPosition) < 20;
+                if (this.distanceTo(this.downPosition) < 5) {
+                    return unit.distanceTo(this.downPosition) < 20;
                 }
                 
                 return unit.x.isBetween(this.downPosition.x, this.x)

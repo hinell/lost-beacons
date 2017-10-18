@@ -71,10 +71,12 @@ const m = Math;
 Object.getOwnPropertyNames(m).forEach(n => w[n] = w[n] || m[n]);
 
 onload = () => {
-    C = D.querySelector('canvas') || document.createElement('canvas');;
+   /* console.log();
+    let {innerWidth: width, innerHeight: height} = w;*/
+    C = D.querySelector('canvas') || document.createElement('canvas');
     container = document.getElementById('cc');
-    C.width = CANVAS_WIDTH;
-    C.height = CANVAS_HEIGHT;
+    C.width = CANVAS_WIDTH      /*= width;*/
+    C.height = CANVAS_HEIGHT    /*= height;*/
     R = C.getContext('2d',{ alpha: false });
 
 
@@ -101,4 +103,26 @@ onload = () => {
     onresize();
     container.appendChild(C);
     new Game();
+};
+
+onresize = () => {
+    let mw = innerWidth,
+        mh = innerHeight,
+
+        ar = mw / mh, // available ratio
+        br = CANVAS_WIDTH / CANVAS_HEIGHT, // base ratio
+        width,
+        height,
+        style = D.querySelector('#cc').style;
+
+    if (ar <= br) {
+        width = mw;
+        height = width / br;
+    } else {
+        height = mh;
+        width = height * br;
+    }
+
+    style.width = width + 'px';
+    style.height = height + 'px';
 };

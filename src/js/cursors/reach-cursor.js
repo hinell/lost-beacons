@@ -43,7 +43,7 @@ class ReachCursor extends ChaseCursor {
         const cursorScale = min(1, max(0, (G.t - this.timeOnPosition - 0.5) * 10));
         scale(cursorScale, cursorScale);
         let text = 'REACH()', target;
-        if(beacon && dist(beacon, this) < beacon.conquerRadius){
+        if(beacon && this.distanceTo(beacon) < beacon.conquerRadius){
             target = beacon
             text = beacon.controller === PLAYER_TEAM ? 'DEFEND()' : 'CAPTURE()'
         }
@@ -59,7 +59,7 @@ class ReachCursor extends ChaseCursor {
     }
     
     rightDown({x,y},e) {
-      let positionAtPointer = {x: x + 0, y: y + 0};
+      let positionAtPointer = new Object_({x,y});
       
       let radius = G.selectionCursor.units.first.radius; // minimal unit radius
       

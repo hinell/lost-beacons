@@ -1,4 +1,4 @@
-OBJECT_NO_POSITION_IS_MISSING = new Error('Invalid argument: position {x,y} is missing!')
+OBJECT_POSITION_IS_MISSING = new Error('Invalid argument: position {x,y} is missing!')
 class Object_ {
     constructor (cfg = {}) {
       // first things first
@@ -6,13 +6,14 @@ class Object_ {
       this.y          = cfg.y || 0;
       this.collection = [];
     }
+    
     angleTo(targetObj) {
       return Math.PI + Math.atan2(this.y - targetObj.y,this.x - targetObj.x)
     }
     
     distanceTo(position){
-      if(!position || !position.x || !position.y) { throw OBJECT_NO_POSITION_IS_MISSING }
-      return hypot(this.y - position.y,this.x - position.x)
+      if(!position || position.x === undefined || position.y === undefined ) { throw OBJECT_POSITION_IS_MISSING }
+      return Math.hypot(this.y - position.y,this.x - position.x)
     }
 }
 class Objects extends Array {
@@ -20,7 +21,9 @@ class Objects extends Array {
     super()
     if(arr instanceof Array) { this.splice.apply(this, [this.length,0].concat(arr)) }
   }
+  
   get first (){ return this[0] }
+  
   get last (){ return this[this.length] }
   
   // Highly efficient version of filter, allows to avoid doubling filtering the same array
@@ -41,11 +44,11 @@ class Objects extends Array {
   closestTo(targetPos){
     return this
     .filter(currentObj => currentObj !== targetPos )
-    .sort((a, b) => dist(targetPos, a) - dist(targetPos, b))
+    .sort((a, b) => targetPos.distanceTo(a) - targetPos.distanceTo(b))
   }
 
   at(targetPos,radius = GRID_SIZE){
-        return this.filter(obj => dist(targetPos, obj) < radius )
+        return this.filter(obj => targetPos.distanceTo(obj) < radius )
   }
   // TODO: Move to Objects, create checking available position
   // finds available positions around
@@ -68,7 +71,7 @@ class Objects extends Array {
           });
           
           !W.hasObstacle(position.x, position.y, radiusBetween / 2)
-          && this.every(reservedPos => { return dist(reservedPos, position) > radiusBetween; })
+          && this.every(reservedPos => { return reservedPos.distanceTo(position) > radiusBetween; })
           && positions.push(position)
         
       }
@@ -114,7 +117,7 @@ class Objects extends Array {
               currentX += (offset * 2);
           let position = { x: currentX, y: currentY};
           if(!W.hasObstacle(position.x, position.y, offset / 2)
-            && this.every(reservedPos => { return dist(reservedPos, position) > offset; })){
+            && this.every(reservedPos => { return reservedPos.distanceTo(position) > offset; })){
 
             positions.push(position)
           }

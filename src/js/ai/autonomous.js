@@ -36,11 +36,11 @@ class Autonomous extends Behavior {
                 'x': this.unit.x + cos(a) * this.unit.attackRadius,
                 'y': this.unit.y + sin(a) * this.unit.attackRadius
                 }
-            W.pointInObstacle(position) || positions.push(position);
+            W.pointInObstacle(position) || positions.push();
         }
 
         // Return a position that is available and not close to any enemy
-        return pick(positions)
+        return new Object_(pick(positions));
     }
     
     weakFridnlyUnit(){
@@ -63,7 +63,7 @@ class Autonomous extends Behavior {
             const retreatDecision = {
                 'behavior': retreatBehavior,
                 'done': () => {
-                    return this.unit.health < this.unit.healthSize && dist(retreatPosition, this.unit) <= this.unit.radius
+                    return this.unit.health < this.unit.healthSize && retreatPosition.distanceTo(this.unit) <= this.unit.radius
                 },
                 'bad': () => {
                     return this.unit.health === this.unit.healthSize && this.unit.closestEnemies.at(retreatPosition).length
@@ -98,7 +98,7 @@ class Autonomous extends Behavior {
             const regroupDecision = {
                 'behavior': regroupBehavior,
                 'done': () => {
-                    return dist(friend, this.unit) < friend.healRadius;
+                    return friend.distanceTo(this.unit) < friend.healRadius;
                 },
                 'bad': () => {
                     let enemyHealth     = friend.closestEnemies.totalHealth();

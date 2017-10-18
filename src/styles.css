@@ -1,0 +1,27 @@
+*{
+    margin: 0;
+    box-sizing: content-box;
+}
+
+html, body, .container{
+    height: 100%;
+}
+
+body{
+    background-color: #000;
+    width: 100%;
+}
+
+
+.container {
+    display: flex;
+    justify-content : center;
+    align-items : center;
+    overflow-y : hidden;
+}
+
+canvas{
+    width: 100%;
+    height: 100%;
+
+}

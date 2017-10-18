@@ -192,12 +192,12 @@ class World {
               
               noObstacle    = !W.hasObstacle(beacon.x,beacon.y, 2);
               farFromOthers = beacons.every(b => {
-                distBetweenTwoBeacons = dist(b,beacon);
+                distBetweenTwoBeacons = b.distanceTo(beacon);
                 return  distBetweenTwoBeacons <= maxDistance || distBetweenTwoBeacons >= minDistance
               });
               
               if(farFromOthers && noObstacle) { W.add(beacon); break }
-              if (!beacons.filter(u => dist(u, beacon) < BEACON_SPACING_RADIUS).length) {
+              if (!beacons.filter(u => u.distanceTo(beacon) < BEACON_SPACING_RADIUS).length) {
               break;
               }
             }
@@ -519,7 +519,8 @@ class World {
             let expandIndex,
                 expandDist = Number.MAX_VALUE;
             expandable.forEach((x, i) => {
-                const dist = x.distance + distP(x.row, x.col, end.row, end.col);
+                
+                const dist = x.distance +  new Object_({x: x.row, y: x.col}).distanceTo(new Object_({x: end.row, y: end.col}));
                 if (dist < expandDist) {
                     expandDist = dist;
                     expandIndex = i;
@@ -577,7 +578,7 @@ class World {
                 }
 
                 x.parent = expandedCell;
-                x.distance = expandedCell.distance + distP(x.row, x.col, expandedCell.row, expandedCell.col);
+                x.distance = expandedCell.distance + new Object_({ x: x.row, y: x.col}).distanceTo({x: expandedCell.row, y: expandedCell.col});
 
                 const existing = expandedMap[x.row][x.col];
                 if (isNaN(existing)) {
@@ -610,15 +611,16 @@ class World {
         let cast;
         if (!castHorizontal) {
             cast = castVertical;
+            
         } else if (!castVertical) {
             cast = castHorizontal;
         } else {
-            const dHorizontal = dist(start, castHorizontal);
-            const dVertical = dist(start, castVertical);
+            const dHorizontal = start.distanceTo(castHorizontal);
+            const dVertical = start.distanceTo(castVertical);
             cast = dHorizontal < dVertical ? castHorizontal : castVertical;
         }
 
-        return maxDistance && (!cast || dist(start, cast)) > maxDistance
+        return maxDistance && (!cast || start.distanceTo(cast)) > maxDistance
             ? {
                 'x': start.x + cos(angle) * maxDistance,
                 'y': start.y + sin(angle) * maxDistance
@@ -671,10 +673,10 @@ class World {
     }
 
     hasObstacleBetween(a, b) {
-        const d = dist(a, b);
-        const cast = W.castRay(a, angleBetween(a, b), d);
+        const d = a.distanceTo(b);
+        const cast = W.castRay(a, a.angleTo(b), d);
         // if cast is null it means target b is out of map
-        return cast && dist(a, cast) < d;
+        return cast && a.distanceTo(cast) < d;
     }
 
     animatePolygons(from, to) {

@@ -4,7 +4,7 @@ class Announcement {
         this.labels = [0].concat(labels); // add one value at the beginning because of the shift
         this.callback = callback;
 
-        interp(this, 'rectangleHeight', 0, 100, 0.25, t, null, () => this.nextLabel());
+        interp(this, 'rectangleHeight', 0, 100, 0.25, 0, null, () => this.nextLabel());
     }
 
     nextLabel() {

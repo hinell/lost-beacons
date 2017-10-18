@@ -1,9 +1,7 @@
-class Cursor {
+class Cursor extends Object_ {
 
     constructor() {
-        // Might be able to get rid of that if it's set from the outside
-        // this.x = 0;
-        // this.y = 0;
+        super()
     }
 
     postRender() {

@@ -3,9 +3,10 @@ INDICATOR_LABEL_CELL_SIZE = 2;
 INDICATOR_PADDING         = 10;
 INDICATOR_ARROW_SIZE      = 10;
 
-class Indicator {
+class Indicator extends Object_ {
 
     constructor(target) {
+        super()
         this.target = target;
         // Owner will set color and label
         this.indicateDuration = 0;
@@ -28,12 +29,12 @@ class Indicator {
     postRender() {
         const t = G.t - (this.indicateTime || -99);
         const radius = CANVAS_WIDTH / 2 - INDICATOR_MARGIN;
-
-        if (t > this.indicateDuration || dist(this.target, V.center) < radius) {
+        
+        if (t > this.indicateDuration || this.target.distanceTo(V.center) < radius) {
             return;
         }
 
-        const angle = angleBetween(V.center, this.target);
+        const angle = V.center.angleTo(this.target);
         const cells = requiredCells(this.label);
 
         const labelWidth = cells * INDICATOR_LABEL_CELL_SIZE;

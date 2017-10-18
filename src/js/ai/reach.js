@@ -25,19 +25,19 @@ class Reach extends Behavior {
             .freeCirclePositions(this.target,this.unit.radius)
             .filter(position => position.x !== this.target.x && position.y !== this.target.y )
             .sort((a,b) => {
-              let visibleFromA = W.castRay(a,atan((this.target.y - a.y) / (this.target.x - a.x)),GRID_SIZE * 10) >= dist(a,this.target);
-              let visibleFromB = W.castRay(a,atan((this.target.y - b.y) / (this.target.x - b.x)),GRID_SIZE * 10) >= dist(b,this.target);
+              let visibleFromA = W.castRay(a,atan((this.target.y - a.y) / (this.target.x - a.x)),GRID_SIZE * 10) >= this.target.distanceTo(a);
+              let visibleFromB = W.castRay(a,atan((this.target.y - b.y) / (this.target.x - b.x)),GRID_SIZE * 10) >= this.target.distanceTo(b);
               if (visibleFromA !== visibleFromB) {
                 return visibleFromA ? -1 : 1;
               }
             // Both positions can see the target, so let's just pick whichever one is closer
-            return dist(a,this.target) - dist(b,this.target);
+            return this.target.distanceTo(a) - this.target.distanceTo(b);
           })[0];
           
           this.position = this.position || this.target;
           this.subBehavior && (this.subBehavior = new Idle());
           this.path     = W.constructPath(this.unit, this.position, (position) => {
-          return dist(position, this.position) <= GRID_SIZE;
+          return new Object_(position).distanceTo(this.position) <= GRID_SIZE;
           });
           this.path     = this.path  || [this.target]; // if no path of previous call, then go to the target anyway
         }
@@ -48,7 +48,7 @@ class Reach extends Behavior {
         if(!this.path.length) { return }
         const nextPosition = this.path[0];
         if (nextPosition) {
-            const distance = dist(this.unit, nextPosition);
+            const distance = this.unit.distanceTo(nextPosition);
 
             this.unit.moving = true;
 

@@ -262,9 +262,9 @@ class Beacon extends Object_ {
                         'x': (col + 0.5) * GRID_SIZE,
                         'y': (row + 0.5) * GRID_SIZE
                     };
-                    const angle = angleBetween(this, center);
+                    const angle = this.angleTo(center);
                     if (
-                        dist(this, center) < dist(this, {'x': this.x + cos(angle) * this.conquerRadius, 'y': this.y + sin(angle) * this.conquerRadius})
+                        this.distanceTo(center) < this.distanceTo({'x': this.x + cos(angle) * this.conquerRadius, 'y': this.y + sin(angle) * this.conquerRadius})
                     ) {
                         fr(center.x - GRID_SIZE / 2, center.y - GRID_SIZE / 2, GRID_SIZE, GRID_SIZE);
                     }
@@ -509,7 +509,7 @@ class Beacon extends Object_ {
                             'x': (col + 0.5) * GRID_SIZE,
                             'y': (row + 0.5) * GRID_SIZE
                         };
-                        const angle = angleBetween(this, center);
+                        const angle = this.angleTo(center);
                         if (
                             // dist(this, center) < dist(this, {'x': this.x + cos(angle) * effect.radius, 'y': this.y + sin(angle) * effect.radius})
                             (this.x + cos(angle) * effect.radius).isBetween(center.x - GRID_SIZE / 2, center.x + GRID_SIZE / 2) &&

@@ -143,7 +143,7 @@ class Unit extends Object_ {
         // this.collection = currentMapSector
         return this.closestEnemies
             .filter(c => !W.hasObstacleBetween(this, c))
-            .sort((a, b) => dist(this, a) - dist(this, b))
+            .sort((a, b) => this.distanceTo(a) - this.distanceTo(b))
             [0];
     }
     
@@ -226,7 +226,7 @@ class Unit extends Object_ {
 
                 W.add(p, RENDERABLE);
 
-                interp(p, 'progress', 0, 1, dist(this, this.target) / 100, 0, null, () => {
+                interp(p, 'progress', 0, 1, this.distanceTo(this.target) / 100, 0, null, () => {
                     target.heal(this.healingAmount);
                     W.remove(p);
                 });
