@@ -66,10 +66,12 @@ class MenuWorld extends World {
         interp(W, 'textAlpha', 0, 1, 0.5, 0.8);
 
         // selection prompt
-        
-        this.add(new SelectHelp(
+        this.add(new CursorHelp(
             () => pick([leftUnits.first,rightUnits.first])
-          , () => G.selectionCursor.units.length || G.selectionCursor.downPosition)
+          , () => G.selectionCursor.units.length || G.selectionCursor.downPosition
+          , G.canvas
+          , G.cursor.pointer
+          )
         );
       
         // checking if need to start a new game

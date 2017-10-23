@@ -2,22 +2,23 @@ class Game {
 
     constructor(cfg = {}) {
         this.renderingContext = cfg.renderingContext;
-        this.rendered         = cfg.rendered;
+        this.canvas           = cfg.canvas;
         G                     = this;
-
+        // Initialize cursors
+        G.cursor =
+        G.selectionCursor = new SelectionCursor(this.canvas);
+        G.attackCursor    = new AttackCursor(this.canvas);
+        G.reachCursor     = new ReachCursor(this.canvas);
+        G.healCursor      = new HealCursor(this.canvas);
+        
         G.t = 0;
         G.levelId = 2; // // TODO: BUG, if setting to 1 renders NO space for beacons positioning
         G.MINIMAP_SCALE = MINIMAP_SCALE;
         MINIMAP_SCALE   = G.MINIMAP_SCALE + (.01 / (1 + Math.pow(1.5,(-6 + G.levelId))) )
-        // G.launch(GameplayWorld); // creates the world
+        // G.launch(TestWorld); // creates the world
         G.launch(MenuWorld); // creates the world
-
-        // Initialize cursors
-        G.cursor =
-        G.selectionCursor = new SelectionCursor();
-        G.attackCursor    = new AttackCursor();
-        G.reachCursor     = new ReachCursor();
-        G.healCursor      = new HealCursor();
+        // G.launch(GameplayWorld); // creates the world
+      
         // Main loop, starting point, entry point
         let pts = 0; // previous timestamp
         let frame = (ts) => {
@@ -42,7 +43,7 @@ class Game {
         this.t += t;
         W.cycle(t);
         G.updateCursor();
-        W.render(t,this.renderingContext,this.rendered);
+        W.render(t,this.renderingContext,this.canvas);
     }
 
     beaconsScore(controller) {

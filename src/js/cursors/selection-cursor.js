@@ -1,7 +1,7 @@
 class SelectionCursor extends Cursor {
 
-    constructor() {
-        super();
+    constructor(canvas) {
+        super(canvas);
         this.selection = new Objects();
     }
 
@@ -57,13 +57,13 @@ class SelectionCursor extends Cursor {
 
 }
 
-class SelectHelp extends SelectionCursor {
+class CursorHelp extends SelectionCursor {
 
     move(){}
     
-    constructor(getStartXY, pause) {
-        super()
-        this.cursor = new FakeCursor();
+    constructor(getStartXY, pause, c, defaultPointer) {
+        super(c)
+        this.cursor = defaultPointer;
         this.selectionSize =  350;
         this.pause    = pause || (() => false);
         this.selectionAlpha = 1;

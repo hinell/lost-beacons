@@ -1,7 +1,7 @@
 class ChaseCursor extends Cursor {
     
-    constructor (){
-        super();
+    constructor (canvas){
+        super(canvas);
         this.color = '#0f0'
         this.target // only set when the unit is selected
     }
@@ -76,7 +76,7 @@ class ChaseCursor extends Cursor {
 
 class HealCursor extends ChaseCursor {
 
-    constructor (){ super(); this.color = '#f4fff5' }
+    constructor (canvas){ super(canvas); this.color = '#f4fff5' }
 
     get label() {
         return ( this.target ? this.target.name.toLocaleUpperCase() + ':' : '')+'HEAL()';
@@ -100,7 +100,7 @@ class HealCursor extends ChaseCursor {
 
 class AttackCursor extends ChaseCursor {
 
-    constructor (){ super(); this.color = '#ff0300' }
+    constructor (canvas){ super(canvas); this.color = '#ff0300' }
     
     get label() {
         return ( this.target ? this.target.name.toLocaleUpperCase() + ':' : '') + 'ATTACK()';
@@ -133,8 +133,8 @@ class AttackCursor extends ChaseCursor {
 
 class ReachCursor extends ChaseCursor {
 
-    constructor (){
-        super();
+    constructor (canvas){
+        super(canvas);
         this.color = '#0f0'
         this.squareBlinkingInterval = 0.5;
     }
@@ -191,23 +191,23 @@ class ReachCursor extends ChaseCursor {
         super.move(p);
     }
     
-    rightDown({x,y},e) {
-      let positionAtPointer = new Object_({x,y});
+    rightDown(target,e) {
+          target = new Object_(target);
       
       let radius = G.selectionCursor.units.first.radius; // minimal unit radius
       
-      let nearestBeacon = W.beacons.closestTo(positionAtPointer).first;
+      let nearestBeacon = W.beacons.closestTo(target).first;
       let reachableUnits= nearestBeacon.units.length
         ? nearestBeacon.units
         : W.units
 
       let positions = w.down.alt
-        ? reachableUnits.freeRectanglePositions(this,radius)
-        : reachableUnits.freeCirclePositions(this, radius, null);
+        ? reachableUnits.freeRectanglePositions(target,radius)
+        : reachableUnits.freeCirclePositions(target, radius, null);
           G.selectionCursor.units.forEach((unit,i,arr) => {
               let position = positions[i];
               if(position) {
-                  unit.setBehavior(new Reach(positionAtPointer, position));
+                  unit.setBehavior(new Reach(target, position));
                   this.drawPositionCircles(position)
               } else {
               //stay still if no position is available

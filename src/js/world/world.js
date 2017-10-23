@@ -329,15 +329,7 @@ class World {
             // Grid on the floor
             R.fillStyle = W.floorPattern;
             fr(V.x, V.y, CANVAS_WIDTH, CANVAS_HEIGHT);
-            
-
-            if(W.beacons.filter(beacon => beacon.inMouseOverButton(G.cursor)).length){
-                canvas.style['cursor'] = 'pointer'
-            } else {
-                FakeCursor.getDataUrl(url => {canvas.style['cursor'] = `url(${url}) -1 -1, not-allowed`})
-            }
-            wrap(()=> { G.cursor.postRender(t,ctx,canvas) })
-
+          
             // Renderables (units, particles...) that are in camera scope
             W.renderables
             .forEach(r => {
@@ -353,13 +345,20 @@ class World {
             .forEach(function(p) {
                 if((p.x || p.y) && V.contains(p.x,p.y) && p.renderCondition(V.center)){ p.render(t,ctx,canvas) }
             })
-
+            
+            if(W.beacons.filter(beacon => beacon.inMouseOverButton(G.cursor)).length){
+                G.cursor.style('pointer')
+            } else { G.cursor.style() }
+            wrap(()=> { G.cursor.postRender(t,ctx,canvas) })
+            
             W.renderables.forEach(r => {
                 if(r.postRender){
                     if (r.x || r.y) { V.contains(r.x,r.y,10) && wrap(() => r.postRender(t,ctx,canvas)) }
                     else { wrap(() => r.postRender(t,ctx,canvas)) }
                 }
             });
+            
+            
         });
 
         if (W.flashAlpha) {

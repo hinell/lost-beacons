@@ -97,7 +97,7 @@ onload = () => {
     });
 
     onresize();
-    new Game({renderingContext: R, rendered: C});
+    new Game({renderingContext: R, canvas: C});
 };
 
 onresize = () => {

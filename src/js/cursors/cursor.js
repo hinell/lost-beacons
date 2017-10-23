@@ -1,11 +1,28 @@
 class Cursor extends Object_ {
 
-    constructor() {
+    constructor(elem) {
         super()
+        this.elem = elem;
+        this.pointer = new DefaultPointer()
+        this.styleCursor;
     }
-
-    postRender() {
-        // implement in subclasses
+    
+    // Set up cursor's style. If no argument provided then style is default
+    // @param style {string|undefined} - css cursor style
+    style(style){
+        if(style){ this.elem.style['cursor'] = style  }
+        else {
+            if(this.styleCursor) {
+                this.elem.style['cursor'] = this.styleCursor
+            } else {
+                this.pointer.preRender(url => { this.styleCursor = this.elem.style['cursor'] = `url(${url}) -1 -1, not-allowed` })
+            }
+            
+        }
+    }
+    
+    postRender(t,ctx,c) {
+    
     }
 
     down(p) {
@@ -79,7 +96,7 @@ class Cursor extends Object_ {
     }
 }
 
-class FakeCursor {
+class DefaultPointer {
 
     constructor (){
         this.x = this.y = 0;
@@ -87,12 +104,31 @@ class FakeCursor {
         this.height = 20;
         this.slopeX = Math.cos(Math.PI / 4) * this.width;
         this.slopeY = Math.sin((Math.PI / 4)) * this.height;
+        this.canvas // cached render
+        this.image  // cached render in image format
+        this.url
+    }
+    
+    preRender(cb){
+        if(this.url) { return cb(this.url,this.image,this) }
+        this.canvas = new Canvas()
+            .render(20,20,ctx => new DefaultPointer().postRender(0,ctx) );
+            
+        this.canvas.toBlob((blob) => {
+            let image = new Image();
+                image.width  = this.canvas.width;
+                image.height = this.canvas.height;
+                image.src = this.url = URL.createObjectURL(blob);
+                this.image = image;
+            cb(this.url,image,this)
+        },'image/png');
+    
     }
     
     postRender(t,ctx) {
         ctx.translate(this.x, this.y);
-        if(FakeCursor.image) {
-            ctx.drawImage(FakeCursor.image,0,0);
+        if(this.image) {
+            ctx.drawImage(this.image,0,0);
             return
         }
         ctx.fillStyle = '#fff';
@@ -106,19 +142,4 @@ class FakeCursor {
         ctx.stroke();
     }
     
-    static getDataUrl (cb){
-    if(this.dataUrl) { return cb(this.dataUrl) }
-    this.rendered        = new Canvas()
-        .render(20,20,ctx => new FakeCursor().postRender(0,ctx) );
-        
-    this.rendered.toBlob((blob) => {
-        let image = new Image();
-            image.width  = this.rendered.width;
-            image.height = this.rendered.height;
-            image.src = this.dataUrl = URL.createObjectURL(blob);
-            this.image = image;
-        cb(this.dataUrl)
-    },'image/png');
-    }
-
 }
