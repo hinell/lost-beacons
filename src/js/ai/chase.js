@@ -1,6 +1,6 @@
 class Chase extends Behavior {
 
-    constructor(target, position, radius = UNIT_RADIUS) {
+    constructor(target, position, radius = 20) {
         super();
         this.target     = target;
         this.position   = position;
@@ -26,7 +26,7 @@ class Chase extends Behavior {
             
             // Make sure we're focusing on this specific unit (to avoid having the unit auto-attack another target)
             this.unit.target   = this.target;
-            this.unit.friendly = this.target.team === this.unit.team;
+            this.unit.friendly = this.target.controller === this.unit.controller;
         } else {
             this.subBehavior = new Reach(this.target,this.position);
             // TODO: If no position provided then Reach is too expensive for performance

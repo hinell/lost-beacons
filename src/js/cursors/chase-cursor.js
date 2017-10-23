@@ -41,10 +41,10 @@ class ChaseCursor extends Cursor {
         this.circlesDrawing = true;
         // Quick effect to show where we're going
         let circle = {
-            a       : duration || 1,
+            a       : duration || 2,
             'render': (e) => {
                 // no render if canvas is going to be saved
-                if((circle.a -= 0.1)  <= 0.1) { R.globalAlpha = 1; W.remove(circle) }
+                if((circle.a -= 0.1)  <= 0.1) {  R.globalAlpha = 1; W.remove(circle); return }
                 // R.translate(target.x, target.y);
                 // R.scale(circle.a + 0.1,circle.a + 0.1);
                 R.globalAlpha = transparency || circle.a
@@ -52,7 +52,7 @@ class ChaseCursor extends Cursor {
                 
                 R.lineWidth = 0.5;
                 R.beginPath();
-                R.arc(target.x, target.y, 5, 0, PI * 2, true);
+                R.arc(target.x, target.y, circle.a.linear(6,0,2) , 0, Math.PI2, true);
                 // R.arc(0, 0, 5, 0, PI * 2, true);
                 R.stroke();
 

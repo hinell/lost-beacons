@@ -34,6 +34,7 @@ onmousedown = e => {
         && xOnMap > 0 && xOnMap < 1
         && yOnMap > 0 && yOnMap < 1
     ) {
+        // TODO: Minimap Dragging should be done by mini map itself
         draggingMinimap = true;
         followMinimap(xOnMap,yOnMap);
         return;

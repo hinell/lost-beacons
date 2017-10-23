@@ -6,7 +6,7 @@ class GameplayWorld extends World {
         const rows = 20 + G.levelId * 10;
         const cols = 20 + G.levelId * 10;
 
-        W.matrix = generate(rows, cols);
+        W.matrix = generate(rows, cols, false);
        
         
         W.symSquad(
@@ -62,17 +62,17 @@ class GameplayWorld extends World {
                 if (position && beacon){
                     beacon.x = position.x;
                     beacon.y = position.y;
-                    W.add(beacon, BEACON | CYCLABLE | RENDERABLE);
+                    W.add(beacon);
                 }
             });
             
         this.endGameCondition = {cycle: function () {
                
-                let playerUnits = W.units.filter(unit => unit.team === PLAYER_TEAM).length;
-                let enemyUnits = W.units.filter(unit => (unit.team === ENEMY_TEAM || unit.team === NEMESIS_TEAM )).length;
+                let playerUnits = W.units.filter(unit => unit.controller === PLAYER_TEAM).length;
+                let enemyUnits = W.units.filter(unit => (unit.controller === ENEMY_TEAM || unit.controller === NEMESIS_TEAM )).length;
                 
-                let playerBeacons = W.beacons.filter(beacon => beacon.team === PLAYER_TEAM).length;
-                let enemyBeacons = W.beacons.filter(beacon => (beacon.team === ENEMY_TEAM || beacon.team === NEMESIS_TEAM)).length;
+                let playerBeacons = W.beacons.filter(beacon => beacon.controller === PLAYER_TEAM).length;
+                let enemyBeacons = W.beacons.filter(beacon => (beacon.controller === ENEMY_TEAM || beacon.controller === NEMESIS_TEAM)).length;
 
                 // End if someone captured all beacons OR if the player is completely dead
                 let noPlayerUnitsLeft = !playerUnits;
@@ -94,6 +94,7 @@ class GameplayWorld extends World {
         ]);
         
         this.enableHUDBack = false
+        this.miniMapInterval = new Interval(0.1,this.renderMinimap.bind(this))
     }
 
     pauseAndAnnounce(s, callback) {
@@ -117,11 +118,12 @@ class GameplayWorld extends World {
       
     }
     
-    render(t){
-        super.render(t)
+    render(t,ctx,c) {
+        super.render(t,ctx,c);
         this.renderHUD(t);
-        this.renderMinimap(t);
+        this.miniMapInterval.cycle(t)
     }
+    
     gameOver(win) {
         if (win) {
             TimeData.saveTime(G.levelId, W.t);

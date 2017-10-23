@@ -151,7 +151,7 @@ class World {
           if(!(unit = units[i])) { return };
           unit.x = position.x;
           unit.y = position.y;
-          unit.setBehavior((controller || unit.team).behavior(position)); // set default unit behaviour
+          unit.setBehavior((controller || unit.controller).behavior(position)); // set default unit behaviour
           W.add(unit, UNIT | CYCLABLE | RENDERABLE)
         })
     }
@@ -160,9 +160,9 @@ class World {
       
       let units = new Units()
       for (let i = 0; i < size; i++) {
-        let unit      = new UnitConstructor({team: team});
-            unit.team = team
-            units.surcol = units;
+        let unit            = new UnitConstructor({controller: team});
+            unit.controller = team
+            units.surcol    = units;
             units.push(unit)
       }
       return units
@@ -204,8 +204,7 @@ class World {
         })
 
     }
-
-
+    
     renderMinimap() {
         wrap(() => {
             translate(
@@ -248,11 +247,11 @@ class World {
 
             R.globalAlpha = 1;
             W.units
-                .forEach(c => {
+                .forEach(unit => {
                     R.beginPath();
-                    R.strokeStyle = R.fillStyle = c.team.body;
-                    let x = c.x * MINIMAP_SCALE - 2;
-                    let y = c.y * MINIMAP_SCALE - 2;
+                    R.strokeStyle = R.fillStyle = unit.controller.body;
+                    let x = unit.x * MINIMAP_SCALE - 2;
+                    let y = unit.y * MINIMAP_SCALE - 2;
                         R.arc(x, y, 1, 0, 2 * PI);
                         R.stroke()
                 });
@@ -265,10 +264,6 @@ class World {
                         squareFocus(8, 4,0.5);
                     });
                 });
-
-            R.lineWidth = 1;
-            R.strokeStyle = '#000';
-            strokeRect(0.5, 0.5, ~~(W.width * MINIMAP_SCALE), ~~(W.height * MINIMAP_SCALE));
         });
     }
 
@@ -284,6 +279,7 @@ class World {
 
         drawCenteredText('' + value, x + w + sign * 15, y, HUD_SCORE_CELL_SIZE, color, true);
     }
+    
     renderHUD(e) {
         wrap(() => {
             translate(CANVAS_WIDTH / 2, CANVAS_HEIGHT - HUD_HEIGHT);
@@ -326,7 +322,7 @@ class World {
         });
     }
     
-    render(e) {
+    render(t,ctx,canvas) {
         wrap(() => {
             // move the canvas by the camera
             translate(-~~V.x, -~~V.y);
@@ -334,27 +330,35 @@ class World {
             // Grid on the floor
             R.fillStyle = W.floorPattern;
             fr(V.x, V.y, CANVAS_WIDTH, CANVAS_HEIGHT);
+            
+
+            if(W.beacons.filter(beacon => beacon.inMouseOverButton(G.cursor)).length){
+                canvas.style['cursor'] = 'pointer'
+            } else {
+                FakeCursor.getDataUrl(url => {canvas.style['cursor'] = `url(${url}) -1 -1, not-allowed`})
+            }
+            wrap(()=> { G.cursor.postRender(t,ctx,canvas) })
 
             // Renderables (units, particles...) that are in camera scope
             W.renderables
             .forEach(r => {
                 if(r.render){
-                    // TODO: Don't forget this
-                    if(r instanceof Unit && r.behavior instanceof Reach) { return wrap(() => r.render(e)) } // render path
-                    if((r.x || r.y) && V.contains(r.x,r.y,10)){ wrap(() => r.render(e)) }
-                    else { wrap(() => r.render(e)) }
+                    // TODO: BUG  Indicator won't render cause it is attached to the beacon
+                    if(r instanceof Unit && r.behavior instanceof Reach) { return wrap(() => r.render(t,ctx,canvas)) } // render path
+                    if((r.x || r.y) && V.contains(r.x,r.y,10)){ wrap(() => r.render(t,ctx,canvas)) }
+                    else { wrap(() => r.render(t,ctx,canvas)) }
                 }
             });
             // Polygons (obstacles)
             W.polygons
             .forEach(function(p) {
-                if((p.x || p.y) && V.contains(p.x,p.y) && p.renderCondition(V.center)){ p.render() }
+                if((p.x || p.y) && V.contains(p.x,p.y) && p.renderCondition(V.center)){ p.render(t,ctx,canvas) }
             })
 
             W.renderables.forEach(r => {
                 if(r.postRender){
-                    if (r.x || r.y) { V.contains(r.x,r.y,10) && wrap(() => r.postRender(e)) }
-                    else { wrap(() => r.postRender(e)) }
+                    if (r.x || r.y) { V.contains(r.x,r.y,10) && wrap(() => r.postRender(t,ctx,canvas)) }
+                    else { wrap(() => r.postRender(t,ctx,canvas)) }
                 }
             });
         });
@@ -389,7 +393,7 @@ class World {
     }
     
     get center() {
-        return {x : floorP(this.width / 2) , y : floorP(this.height / 2)}
+        return new Object_({x : (this.width / 2).floorp()  , y : (this.height / 2).floorp() })
     }
 
     add(instance, types) {

@@ -8,7 +8,6 @@
 //
 
 // window.DEBUG = false;
-window.evaluate = eval;
 //
 // require("script-loader!./util/globals.js");
 // require("script-loader!./util/resizer.js");
@@ -73,8 +72,7 @@ Object.getOwnPropertyNames(m).forEach(n => w[n] = w[n] || m[n]);
 onload = () => {
    /* console.log();
     let {innerWidth: width, innerHeight: height} = w;*/
-    C = D.querySelector('canvas') || document.createElement('canvas');
-    container = document.getElementById('cc');
+    C = D.querySelector('canvas');
     C.width = CANVAS_WIDTH      /*= width;*/
     C.height = CANVAS_HEIGHT    /*= height;*/
     R = C.getContext('2d',{ alpha: false });
@@ -83,9 +81,7 @@ onload = () => {
     // Shortcut for all canvas methods
     const p = CanvasRenderingContext2D.prototype;
     p.wrap = function(f) {
-        R.saving = true
         this.save();
-        R.saving = false
         f();
         this.restore();
 
@@ -101,8 +97,7 @@ onload = () => {
     });
 
     onresize();
-    container.appendChild(C);
-    new Game();
+    new Game({renderingContext: R, rendered: C});
 };
 
 onresize = () => {
@@ -111,10 +106,10 @@ onresize = () => {
 
         ar = mw / mh, // available ratio
         br = CANVAS_WIDTH / CANVAS_HEIGHT, // base ratio
+        // CH = CW / br
         width,
         height,
-        style = D.querySelector('#cc').style;
-
+        style = D.getElementById('viewport').style;
     if (ar <= br) {
         width = mw;
         height = width / br;

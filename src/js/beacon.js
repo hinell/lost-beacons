@@ -54,11 +54,11 @@ class Beacon extends Object_ {
         this.readyUnits = new this.Units();
         this.indicator  = new Indicator(this);
         this.nextReinforcements = 0;
-        this.spawnInterval      = 1;
+        this.spawnInterval      = 4;
       
         // rendering settings
-        this.PI2 = PI * 2;
-        this.PI3 = PI * 3;
+        this.PI2 = Math.PI2;
+        this.PI3 = Math.PI3;
         
         Object.assign(this,config)
     }
@@ -67,12 +67,11 @@ class Beacon extends Object_ {
     get units() { return this.nearbyUnits }
     
     cycle(e) {
-    // TODO: Rework
     if((this.cacheTimer-= e) <= 0){
         this.cacheTimer    = this.cacheInterval
         
         // TODO: Should be replaced by controller fields
-        this.allControllerUnits     = W.units.filter(unit => unit.team === this.controller ).length;
+        this.allControllerUnits     = W.units.filter(unit => unit.controller === this.controller ).length;
         this.allControllerBeacons   = W.beacons.filter(b => b.controller === this.controller).length;
         
         this.nearbyUnits     = W.units.at(this,this.unitsDetectionRadius)
@@ -81,11 +80,11 @@ class Beacon extends Object_ {
 
         this.conqueringTeams = new Map();
         this.conqueringUnits.forEach(u => {
-            let controllerObj = this.conqueringTeams.get(u.team);
-            if(!controllerObj){ this.conqueringTeams.set(u.team, controllerObj = { controller: u.team , count: 0, units: [] }) }
+            let controllerObj = this.conqueringTeams.get(u.controller);
+            if(!controllerObj){ this.conqueringTeams.set(u.controller,controllerObj = { controller: u.controller , count: 0, units: [] }) }
                 controllerObj.count++;
                 controllerObj.units.push(u)
-                this.conqueringTeams.set(u.team,controllerObj);
+                this.conqueringTeams.set(u.controller,controllerObj);
         });
     }
     // equilibrium if units of conquering teams are equal by health
@@ -189,16 +188,16 @@ class Beacon extends Object_ {
         if(this.previousController === PLAYER_TEAM) {
             this.indicator.indicate('control over ' + this.Unit._name + ' is lost!',this.previousController.beacon,3); }
         if (this.controller === PLAYER_TEAM) {
-            let replies = [this.Unit._name + ' factory is our!'].concat(this.nearbyUnits.filter(u => u.team === this.controller)[0].replies)
-            this.indicator.indicate(pick(replies),this.controller.beacon,2);
+            let replies = [this.Unit._name + ' factory is our!'].concat(this.nearbyUnits.filter(u => u.controller === this.controller)[0].replies)
+            this.indicator.indicate(pick(replies),this.controller.beacon);
         } else {
             this.indicator.indicate('beacon is lost','#fff');
         }
     }
     
     buildUnit(){
-        const unit = this.Unit ? new this.Unit() : new Unit();
-        unit.team  = this.controller;
+        const unit      = this.Unit ? new this.Unit() : new Unit();
+        unit.controller = this.controller;
         this.readyUnits.push(unit);
         if (this.controller === PLAYER_TEAM) { this.indicator.indicate(' + ' +this.readyUnits.length + ' ' + (this.Unit._name || 'unit'),this.controller.beacon) }
         if (this.controller === ENEMY_TEAM )  { this.indicator.indicate('enemy reinforcements', this.controller.beacon) }
@@ -206,7 +205,10 @@ class Beacon extends Object_ {
     }
     
     spawnUnits(){
-        let freePositionsAround = W.units.concat(this).freeCirclePositions(this,UNIT_RADIUS ,this.conquerRadius * 2)
+        let freePositionsAround = this.nearbyUnits
+            .concat(this)
+            .concat(this.readyUnits)
+            .freeCirclePositions(this,this.readyUnits.first.radius, this.conquerRadius * 2)
         let freePosAmount = freePositionsAround.length, i = 0;
         
         while(this.readyUnits.length && i <= freePosAmount) {
@@ -313,7 +315,7 @@ class Beacon extends Object_ {
 
     }
 
-    inReinforcementsButton(position) {
+    inMouseOverButton(position) {
         const bounds = this.reinforcementButtonBounds;
         if(!bounds){return}
         return this.readyUnits.length > 0 && this.controller === PLAYER_TEAM
@@ -322,8 +324,9 @@ class Beacon extends Object_ {
     }
 
     reinforcementsButtonBounds(text) {
-        const width = requiredCells(text) * BEACON_REINFORCEMENTS_BUTTON_CELL_SIZE + (BEACON_REINFORCEMENTS_BUTTON_PADDING + BEACON_REINFORCEMENTS_BUTTON_BORDER_THICKNESS) * 2;
-        return {
+        if(this.buttonBounds){ return this.buttonBounds }
+        let width = requiredCells(text) * BEACON_REINFORCEMENTS_BUTTON_CELL_SIZE + (BEACON_REINFORCEMENTS_BUTTON_PADDING + BEACON_REINFORCEMENTS_BUTTON_BORDER_THICKNESS) * 2;
+        return this.buttonBounds = {
             'x': this.x - width / 2,
             'y': this.y + BEACON_REINFORCEMENTS_BUTTON_Y,
             'width': width,
@@ -332,7 +335,7 @@ class Beacon extends Object_ {
     }
 
     maybeClick(position) {
-        if (this.inReinforcementsButton(position)) {
+        if (this.inMouseOverButton(position)) {
             this.spawnUnits();
             this.indicator.clear();
             return true;
@@ -387,6 +390,8 @@ class Beacon extends Object_ {
     }
     
     postRender(e) {
+        // TODO: attach indicator to the controllers' viewport
+        // it has the wrong place
         wrap(() => this.indicator.postRender());
      // render particles
 
@@ -486,8 +491,8 @@ class Beacon extends Object_ {
             const dist = rand(100, 200);
             const t = rand(0.5, 1.5);
             particle(5,(this.controller && this.controller.body) || '#fff',[
-                ['x', this.x, this.x + cos(angle) * dist, t, 0, easeOutQuad],
-                ['y', this.y, this.y + sin(angle) * dist, t, 0, easeOutQuad],
+                ['x', this.x, this.x + cos(angle) * dist, t, 0, 'easeOutQuad'],
+                ['y', this.y, this.y + sin(angle) * dist, t, 0, 'easeOutQuad'],
                 ['s', rand(5, 10), 0, t]
             ],true);
         }
@@ -523,7 +528,7 @@ class Beacon extends Object_ {
         };
         W.add(effect, RENDERABLE);
 
-        interp(effect, 'radius', 0, GRID_SIZE * 10, 1, 0, easeOutQuad, () => W.remove(effect));
+        interp(effect, 'radius', 0, GRID_SIZE * 10, 1, 0, 'easeOutQuad', () => W.remove(effect));
     }
 
 }

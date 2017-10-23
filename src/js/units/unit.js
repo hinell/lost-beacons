@@ -3,19 +3,6 @@ class Units extends Objects {
 }
 class UnitsGroup extends Units {}
 
-UNIT_SPEED              =  150;
-UNIT_ANGULAR_SPEED      =  Math.PI / 360;
-UNIT_RADIUS             =  20;
-UNIT_ATTACK_RADIUS      =  200;
-UNIT_HEAL_RADIUS        =  100;
-UNIT_PX_SIZE            =  3;
-UNIT_SHOT_INTERVAL      =  0.8;
-UNIT_SHOT_DAMAGE        =  0.25;
-
-UNIT_HEALING_AMOUNT     =  0.05;
-UNIT_HEALING_INTERVAL   =  1.5;
-BEACON_CONQUER_SPEED_PER_UNIT = 0.1;
-
 const ALL_REPLIES   = [
             'our domination will last forever ... '
         ,   'the victory is coming'
@@ -33,26 +20,32 @@ class Unit extends Object_ {
     constructor(cfg = {}){
         super(cfg);
         // shooting settings
-        this.damageAmount = cfg.damageAmount    || UNIT_SHOT_DAMAGE;
-        this.shotInterval = cfg.shotInterval    || UNIT_SHOT_INTERVAL;
-        this.attackRadius = cfg.attackRadius    || UNIT_ATTACK_RADIUS;
+        // 0.25/0.8 = x / 0.2
+        this.damageAmount = cfg.damageAmount    || 0.125;
+        this.shotInterval = cfg.shotInterval    || 0.4;
+        this.attackRadius = cfg.attackRadius    || 200;
         this.shotTimer    = this.shotInterval;
         
         // health settings
-        this.healingInterval = cfg.healingInterval  || UNIT_HEALING_INTERVAL
+        this.healingInterval = cfg.healingInterval  || 1.5
         this.healTimer       = this.healingInterval;
-        this.healingAmount   = cfg.healingAmount    || UNIT_HEALING_AMOUNT
-        this.healRadius      = cfg.healRadius       || UNIT_HEAL_RADIUS;
+        this.healingAmount   = cfg.healingAmount    || 0.05
+        this.healRadius      = cfg.healRadius       || 100;
         this.healthSize      = this.health = 1;
         // motion settings
-        this.unitSpeed    = cfg.unitSpeed || UNIT_SPEED
-        this.angularSpeed = cfg.angularSpeed || UNIT_ANGULAR_SPEED
+        this.unitSpeed    = cfg.unitSpeed || 150
+        this.angularSpeed = cfg.angularSpeed || 0.1
         this.angle        = 0;
+        this.angleSpeed   = 1;
+        this.angleTurn    = Math.PI/180;
         this.moving       = false;
+        
+        // tasks
+        this.tasks  = new Objects()
         this.setBehavior(new Idle());
         
         // entity settings
-        this.radius           = cfg.radius || UNIT_RADIUS
+        this.radius           = cfg.radius || 20
         this.visibilityRadius = Math.max(this.healRadius,this.attackRadius);
 
         // cycles
@@ -62,23 +55,26 @@ class Unit extends Object_ {
         
         // beacons
         this.beacon          = null // parental beacon, only available after spawn
-        this.conqueringSpeed = BEACON_CONQUER_SPEED_PER_UNIT
+        this.conqueringSpeed = 0.1
         this.nearbyUnits     = new Units(); // cached units
         this.closestEnemies  = new Units();
         this.closestFriends  = new Units();
         this.closestBeacon
         
-        // other references settings
-        this.indicator = new Indicator(this);
-        this.team      = NEUTRAL_TEAM;
+        // others settings
+        this.indicator  = new Indicator(this);
+        this.controller = cfg.controller || cfg.team;
         this.target;
         this.replies = cfg.replies || ALL_REPLIES
+        
+        // rendering settings
+        this.pxsize = 3;
     }
 
     get dps () { return this.health }
     
     // TODO: Replace every this.team == u.team checks by this method
-    isFriendly (unit) { return this.team === unit.team }
+    isFriendly (unit) { return this.controller === unit.controller }
     
     isHostile  (unit) { return !this.isFriendly(unit) }
     
@@ -91,7 +87,7 @@ class Unit extends Object_ {
             this.health = 0;
         }
         if (this.target) {
-          if (this.target.team === this.team) {
+          if (this.target.controller === this.controller) {
             this.indicator.indicate('engaging enemy!',PLAYER_TEAM.beacon)
           } else {
             this.target.indicator.indicate('unit under attack!',ENEMY_TEAM.beacon);
@@ -108,7 +104,7 @@ class Unit extends Object_ {
             let k = 20;
             while (k--) {
                 const d = rand(3, 4);
-                let p = particle(0, this.team.body, [
+                let p = particle(0,this.controller.body,[
                     ['s', rand(4, 8), 0, 0.1, d],
                 ]);
                 p.x = this.x + rand(-15, 15);
@@ -117,7 +113,7 @@ class Unit extends Object_ {
         }
 
         const bloodDelay = rand(3, 4);
-        let p = particle(0, this.team.body, [
+        let p = particle(0,this.controller.body,[
             ['s', rand(4, 8), 0, 0.1, bloodDelay],
         ]);
         p.x = this.x + rand(-15, 15);
@@ -125,7 +121,7 @@ class Unit extends Object_ {
 
         while (particles--) {
             const d = rand(0.6, 1);
-            particle(0, this.team.body, [
+            particle(0,this.controller.body,[
                 ['s', 10, 0, d],
                 ['x', this.x + rand(-10, 10), this.x + rand(-50, 50), d],
                 ['y', this.y + rand(-10, 10), this.y + rand(-50, 50), d]
@@ -193,7 +189,7 @@ class Unit extends Object_ {
         
         if (this.target) { this.angle = this.angleTo(this.target) }
         
-        this.friendly = this.target.team === this.team;
+        this.friendly = this.target.controller === this.controller;
         
         if (this.friendly
             && (this.healTimer-= e) <= 0
@@ -218,7 +214,7 @@ class Unit extends Object_ {
                     'postRender': () => {
                         translate(this.x + p.progress * (target.x - this.x), this.y + p.progress * (target.y - this.y));
 
-                        R.fillStyle = this.team.beacon;
+                        R.fillStyle = this.controller.beacon;
                         fr(-2, -6, 4, 12);
                         fr(-6, -2, 12, 4);
                     }
@@ -279,10 +275,10 @@ class Unit extends Object_ {
         wrap(() => this.behavior.render());
         
         wrap(() => {
-            translate(floorP(this.x, GRID_SIZE), floorP(this.y, GRID_SIZE));
+            translate(this.x.floorp(GRID_SIZE), this.y.floorp(GRID_SIZE));
             // color of tales on the map
             R.globalAlpha = 0.1;
-            R.fillStyle = this.team.body;
+            R.fillStyle = this.controller.body;
             fr(0, 0, GRID_SIZE, GRID_SIZE);
         });
         
@@ -296,48 +292,48 @@ class Unit extends Object_ {
         rotate(this.angle);
 
         const sinusoidal = this.moving ? sin(G.t * PI * 4) : 0;
-        const offset = sinusoidal * (UNIT_PX_SIZE / 2);
+        const offset = sinusoidal * (this.pxsize / 2);
 
-        translate(-UNIT_PX_SIZE * 1.5, -UNIT_PX_SIZE * 2.5);
+        translate(-this.pxsize * 1.5, -this.pxsize * 2.5);
 
         // Legs
         wrap(() => {
-            translate(UNIT_PX_SIZE, 0);
+            translate(this.pxsize, 0);
             scale(sinusoidal, 1);
-            R.fillStyle = this.team.leg;
-            fr(0, UNIT_PX_SIZE, UNIT_PX_SIZE * 3, UNIT_PX_SIZE); // left
-            fr(0, UNIT_PX_SIZE * 3, -UNIT_PX_SIZE * 3, UNIT_PX_SIZE); // right
+            R.fillStyle = this.controller.leg;
+            fr(0, this.pxsize, this.pxsize * 3, this.pxsize); // left
+            fr(0, this.pxsize * 3, -this.pxsize * 3, this.pxsize); // right
         });
 
         // Left arm
         wrap(() => {
             translate(offset, 0);
-            R.fillStyle = this.team.body;
-            fr(UNIT_PX_SIZE, 0, UNIT_PX_SIZE * 2, UNIT_PX_SIZE);
-            R.fillStyle = this.team.leg;
-            fr(UNIT_PX_SIZE * 2, UNIT_PX_SIZE, UNIT_PX_SIZE * 2, UNIT_PX_SIZE);
+            R.fillStyle = this.controller.body;
+            fr(this.pxsize, 0, this.pxsize * 2, this.pxsize);
+            R.fillStyle = this.controller.leg;
+            fr(this.pxsize * 2, this.pxsize, this.pxsize * 2, this.pxsize);
         });
 
         // Right arm
         wrap(() => {
             translate(-offset, 0);
-            R.fillStyle = this.team.body;
-            fr(UNIT_PX_SIZE, UNIT_PX_SIZE * 4, UNIT_PX_SIZE * 2, UNIT_PX_SIZE);
-            R.fillStyle = this.team.leg;
-            fr(UNIT_PX_SIZE * 2, UNIT_PX_SIZE * 3, UNIT_PX_SIZE * 2, UNIT_PX_SIZE);
+            R.fillStyle = this.controller.body;
+            fr(this.pxsize, this.pxsize * 4, this.pxsize * 2, this.pxsize);
+            R.fillStyle = this.controller.leg;
+            fr(this.pxsize * 2, this.pxsize * 3, this.pxsize * 2, this.pxsize);
         });
 
         // Main body
-        R.fillStyle = this.team.body;
-        fr(0, UNIT_PX_SIZE, UNIT_PX_SIZE * 3, UNIT_PX_SIZE * 3);
+        R.fillStyle = this.controller.body;
+        fr(0, this.pxsize, this.pxsize * 3, this.pxsize * 3);
       
         // Gun
         R.fillStyle = '#000';
-        fr(UNIT_PX_SIZE * 3, UNIT_PX_SIZE * 2, UNIT_PX_SIZE * 3 * (this.damageAmount + 1), UNIT_PX_SIZE);
+        fr(this.pxsize * 3, this.pxsize * 2, this.pxsize * 3 * (this.damageAmount + 1), this.pxsize);
         
         // Head
-        R.fillStyle = this.team.head;
-        fr(UNIT_PX_SIZE, UNIT_PX_SIZE, UNIT_PX_SIZE * 2, UNIT_PX_SIZE * 3)
+        R.fillStyle = this.controller.head;
+        fr(this.pxsize, this.pxsize, this.pxsize * 2, this.pxsize * 3)
       
     }
 
@@ -349,10 +345,10 @@ class Unit extends Object_ {
         // Second render pass, add health gauge
         R.fillStyle = '#000';
         fr(
-            evaluate(-HEALTH_GAUGE_WIDTH / 2) - 1,
+            (-HEALTH_GAUGE_WIDTH / 2) - 1,
             -HEALTH_GAUGE_RADIUS - 1,
-            evaluate(HEALTH_GAUGE_WIDTH + 2),
-            evaluate(HEALTH_GAUGE_HEIGHT + 2)
+            (HEALTH_GAUGE_WIDTH + 2),
+            (HEALTH_GAUGE_HEIGHT + 2)
         );
     let currentHealthGauge = ~~((this.health * HEALTH_GAUGE_WIDTH) / this.healthSize)
         
@@ -361,7 +357,7 @@ class Unit extends Object_ {
         : '#f00';
         
         fr(
-            evaluate(-HEALTH_GAUGE_WIDTH / 2),
+            (-HEALTH_GAUGE_WIDTH / 2),
             -HEALTH_GAUGE_RADIUS,
             currentHealthGauge,
             HEALTH_GAUGE_HEIGHT
@@ -388,11 +384,11 @@ Unit._name = 'uni'
 class Destructor extends Unit {
     constructor(config = {}) {
         super()
-        this.damageAmount =  UNIT_SHOT_DAMAGE * 2;
-        this.shotInterval = (UNIT_SHOT_INTERVAL * 2) - 0.4;
-        this.attackRadius =  UNIT_ATTACK_RADIUS * 1.5;
+        this.damageAmount *= 2;
+        this.shotInterval = (this.shotInterval * 2) - 0.4;
+        this.attackRadius *= 1.5;
         this.visibilityRadius = Math.max(this.healRadius,this.attackRadius);
-        this.unitSpeed    =  ~~(UNIT_SPEED / 2);
+        this.unitSpeed    =  ~~(this.unitSpeed / 2);
       
         this.moving = false;
         this.healthSize = this.health *= 0.9;
@@ -406,7 +402,7 @@ class Killer extends Unit {
         this.damageAmount *= 3
         this.shotInterval;
         this.attackRadius *= 1.5
-        this.unitSpeed    = ~~(UNIT_SPEED * 1.5)
+        this.unitSpeed    = ~~(this.unitSpeed * 1.5)
         this.visibilityRadius = Math.max(this.healRadius,this.attackRadius);
         this.moving = false;
         this.healthSize = this.health *= 0.5;
@@ -417,8 +413,8 @@ Killer._name = 'killer'
 class Beast extends Unit {
     constructor(config){
         super(config)
-        this.shotInterval = UNIT_SHOT_INTERVAL / 0.8
-        this.unitSpeed    = ~~(UNIT_SPEED * 1.15)
+        this.shotInterval = this.shotInterval / 0.8
+        this.unitSpeed    = ~~(this.unitSpeed * 1.15)
         this.visibilityRadius = Math.max(this.healRadius,this.attackRadius);
         this.moving = false;
         this.healthSize = this.health *= 0.9;
@@ -426,6 +422,7 @@ class Beast extends Unit {
 }
 Beast._name = 'beast'
 
-class Helper extends Unit {}
+class Mechanic extends Unit {}
 class Shield extends Unit {}
 class Disintegrator extends Unit {}
+class Conqueror extends Unit {}

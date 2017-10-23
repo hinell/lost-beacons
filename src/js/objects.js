@@ -15,16 +15,13 @@ class Object_ {
       if(!position || position.x === undefined || position.y === undefined ) { throw OBJECT_POSITION_IS_MISSING }
       return Math.hypot(this.y - position.y,this.x - position.x)
     }
+    
 }
 class Objects extends Array {
   constructor(arr){
     super()
     if(arr instanceof Array) { this.splice.apply(this, [this.length,0].concat(arr)) }
   }
-  
-  get first (){ return this[0] }
-  
-  get last (){ return this[this.length] }
   
   // Highly efficient version of filter, allows to avoid doubling filtering the same array
   // @param {Function} - function
@@ -52,26 +49,26 @@ class Objects extends Array {
   }
   // TODO: Move to Objects, create checking available position
   // finds available positions around
-  freeSingleCirclePositions(startPosition, radiusBetween = 5, offSetCenter /* distant from center */, startAngle = 0) {
+  freeSingleCirclePositions(startPosition, distBetweenPos = 5, offSetCenter /* distant from center */, startAngle = 0) {
       // if offSetCenter is not provided then only available
       // position is this object itself
       if (!offSetCenter) { return this.some(e => e.x === startPosition.x && e.y === startPosition.y) ? [] : [startPosition] }
-      if (radiusBetween <= 0) { throw new Error('Invalid argument: radius between positions cannot be zero or below!')}
-      let perimeter     = 2 * PI * offSetCenter;
-      let offsetLength  = ~~(perimeter / radiusBetween);
-      let angleOffset   = (2 * PI) / offsetLength; // angle offset to rotate position over
-
-      let positions = new Objects();
-      let position
-      for (let i = 0 ; i < offsetLength ; i++) {
+      if (distBetweenPos <= 0) { throw new Error('Invalid argument: radius between positions cannot be zero or below!')}
+      let perimeter     = Math.PI2 * offSetCenter;
+      let offsetLength  = ~~(perimeter / distBetweenPos);
+      let angleOffset   = (Math.PI2) / offsetLength; // angle offset to rotate position over
       
-          position = new Object_({
-              x : startPosition.x + cos(angleOffset * i + startAngle) * offSetCenter,
-              y : startPosition.y + sin(angleOffset * i + startAngle) * offSetCenter
+      let positions = new Objects();
+      let position, angle;
+      for (let i = 0 ; i < offsetLength ; i++) {
+          angle     = angleOffset * i + startAngle;
+          position  = new Object_({
+              x : startPosition.x + cos(angle) * offSetCenter,
+              y : startPosition.y + sin(angle) * offSetCenter
           });
-          
-          !W.hasObstacle(position.x, position.y, radiusBetween / 2)
-          && this.every(reservedPos => { return reservedPos.distanceTo(position) > radiusBetween; })
+          // // TODO: Extra things, should be outside
+          !W.hasObstacle(position.x, position.y, distBetweenPos / 2)
+          && this.every(reservedPos => { return reservedPos.distanceTo(position) > distBetweenPos; })
           && positions.push(position)
         
       }
@@ -79,23 +76,24 @@ class Objects extends Array {
   
     }
   
-  freeCirclePositions(position,radBetweenPos,maxRadius,requiredPositions, minRadius, startAngle) {
+  freeCirclePositions(position,distBetweenPos,maxRadius,requiredPositions, minRadius = 0, startAngle = 0) {
       if(!(position instanceof Object_)){ position = new Object_(position) }
 
-      if(!maxRadius){ maxRadius = radBetweenPos * 3 } // default 3 times of radius between each point
+      if(!maxRadius){ maxRadius = distBetweenPos * 3 } // default 3 times of radius between each point
           requiredPositions = requiredPositions || this.length;
           // requiredPositions += ~~(requiredPositions * .10); // available positions + ten percent of possible
       let positions = new Objects();
-      // let angleForGroup = (2 * Math.PI * maxRadius)/radBetweenPos
-      let stop = 0;
-      for ( let currentRadius = minRadius || 0;
+      let stop = -1;
+      for ( let currentRadius = minRadius;
                 currentRadius < maxRadius || stop < 350 && positions.length <= requiredPositions ;
-                currentRadius += radBetweenPos
+                currentRadius += distBetweenPos
       ) {
-        stop++;
-        let nextFreePositions   = this.freeSingleCirclePositions(position, radBetweenPos, currentRadius, startAngle);
-            positions = positions.concat(nextFreePositions)
+            ++stop;
+            // startAngle = Math.PI2 * 0.61803 * stop; // golden number
+        let nextFreePositions   = this.freeSingleCirclePositions(position, distBetweenPos , currentRadius, startAngle);
+            positions = positions.concat(nextFreePositions);
             // nextFreePositions.forEach(p => positions.push(p) )
+       
       }
       return positions
   }

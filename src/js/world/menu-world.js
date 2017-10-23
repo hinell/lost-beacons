@@ -28,18 +28,50 @@ class MenuWorld extends World {
         ];
 
     let beacon = new Beacon();
-        beacon.x = V.center.x-25;
-        beacon.y = V.center.y + 100;
+        beacon.x = W.center.x-25;
+        beacon.y = W.center.y + 100;
         beacon.controller = NEUTRAL_TEAM;
         beacon.control = 0;
     // beacon.indicator.postRender = () => 0;
       
         W.spawnSquad(beacon ,W.createSquad(NEMESIS_TEAM,3,Unit)   );
-        // W.spawnSquad({x: beacon.x - 60, y: beacon.y} ,W.createSquad(NEMESIS_TEAM,7,Beast)   );
-        // W.spawnSquad({x: beacon.x + 60, y: beacon.y} ,W.createSquad(NEMESIS_TEAM,7,Unit )   );
-        
-
         W.add(beacon);
+        
+    let units = w.units = 5..range().map(n => W.createSquad(PLAYER_TEAM,10,Unit)).reduce((arr,c) => arr.concat(c),new Units());
+        units.forEach(u => u.setBehavior(new Idle()) );
+    
+    let leftUnits     = units.slice(0,units.length/2);
+    let leftPosition  = {x: W.center.x - 450, y: W.center.y + 100};
+    let leftPositions = leftUnits.freeCirclePositions(leftPosition,units.first.radius);
+        leftUnits.forEach(function (unit,i){
+            let position = leftPositions[i];
+            if(!position) {return}
+            unit.x = position.x || 300
+            unit.y = position.y || 300
+        });
+
+    let rightUnits     = units.slice(units.length/2);
+    let rightPosition  = {x: W.center.x + 400, y: W.center.y + 100};
+    let rightPositions = rightUnits.freeCirclePositions(rightPosition,units.first.radius);
+        rightUnits.forEach(function (unit,i){
+            let position = rightPositions[i];
+            if(!position) {return}
+            unit.angle = Math.PI;
+            unit.x = position.x || 300
+            unit.y = position.y || 300
+        });
+        
+        units.forEach(this.add,this);
+      
+        interp(W, 'textAlpha', 0, 1, 0.5, 0.8);
+
+        // selection prompt
+        
+        this.add(new SelectHelp(
+            () => pick([leftUnits.first,rightUnits.first])
+          , () => G.selectionCursor.units.length || G.selectionCursor.downPosition)
+        );
+      
         // checking if need to start a new game
         const endGameChecker = {
             'cycle': () => {
@@ -53,90 +85,14 @@ class MenuWorld extends World {
        W.add({
         cycle: function (){
             // make camera still
-            V.x = (W.width - CANVAS_WIDTH) / 2;
+            V.x = (W.width - CANVAS_WIDTH  ) / 2;
             V.y = (W.height - CANVAS_HEIGHT) / 2;
             
         }},true)
-        
-    let bcn1                    = new Beacon();
-        bcn1.previousController = true;
-        bcn1.control            = 1;
-        bcn1.controller         = PLAYER_TEAM;
-        bcn1.Unit               = Destructor;
-        bcn1.spawnInterval      = 10;
-        bcn1.x = V.center.x - 450;
-        bcn1.y = V.center.y + 100;
-        
-    let bcn2                    = new Beacon();
-        bcn2.previousController = true;
-        bcn2.control            = 0;
-        bcn2.controller         = PLAYER_TEAM;
-        bcn2.Unit               = Killer
-        bcn2.spawnInterval      = 10;
-        bcn2.x = V.center.x + 400;
-        bcn2.y = V.center.y + 100;
-        
-      
-    let units = w.units = [
-          W.createSquad(PLAYER_TEAM,5,Unit)
-        , W.createSquad(PLAYER_TEAM,5,Unit)
-        , W.createSquad(PLAYER_TEAM,5,Unit)
-        , W.createSquad(PLAYER_TEAM,5,Unit)
-        ].reduce((arr,c) => arr.concat(c));
-        
-    let units2 = (4).range().map(n => W.createSquad(PLAYER_TEAM,5,Killer)).reduce((arr,c) => arr.concat(c));
-        
-        units.forEach(u => u.setBehavior(new Idle()) )
-        units = new Units(units);
-        
-    let positions = units.freeRectanglePositions(bcn1,units[0].radius)
-        positions.forEach(function (pos,i,arr){
-            if(!units[i]) {return}
-            units[i].x = pos.x || 300
-            units[i].y = pos.y || 300
-        })
-
-        // units.forEach(W.add)
-        bcn1.readyUnits = units
-        bcn2.readyUnits = units2
-        W.add(bcn1);
-        W.add(bcn2);
-
-        // let weakUnit        = new Unit();
-        //     weakUnit.health = 0.1;
-        //     weakUnit.x      = V.center.x - 500
-        //     weakUnit.y      = V.center.y + 200
-        //     weakUnit.team   = PLAYER_TEAM
-        // W.add(weakUnit);
-        
-      
-        interp(W, 'textAlpha', 0, 1, 0.5, 0.8);
-
-        // selection prompt
-        let UnitOnMap = false && W.units.at({x: V.center.x - 150, y: V.center.y - 100},150)[0];
-        UnitOnMap && W.add({
-            cycle: () => {
-                if (!G.selectionCursor.selection.length && !G.selectionCursor.downPosition) {
-                    if (!W.selectHint) {
-                        W.selectHint = new SelectHelp(() => {
-                            W.remove(W.selectHint);
-                            W.selectHint = null;
-                        });
-
-                        W.selectHint.x = UnitOnMap.x - SELECT_HELP_SIZE / 2;
-                        W.selectHint.y = UnitOnMap.y - SELECT_HELP_SIZE / 2;
-                        W.add(W.selectHint, RENDERABLE)
-                    }
-                } else {
-                    W.remove(W.selectHint);
-                }
-            }
-        }, CYCLABLE);
     }
-
-    render(e) {
-        super.render(e);
-
+    
+    render(t,ctx,c) {
+        super.render(t,ctx,c);
         wrap(() => {
             R.globalAlpha = W.textAlpha;
             
@@ -147,10 +103,10 @@ class MenuWorld extends World {
             if (!G.selectionCursor.selection.length) {
                 s = 'click left     to select units';
                 G.reachCursor.sentUnits = false;
-                fakeMouse(555, 850 + 5 * 5 / 2, LEFT_CLICK,e);
+                fakeMouse(555, 850 + 5 * 5 / 2, LEFT_CLICK,t);
             } else if (!G.reachCursor.sentUnits) {
                 s = 'click right     to send units';
-                fakeMouse(555 + 25, 850 + 5 * 5 / 2, RIGHT_CLICK,e);
+                fakeMouse(555 + 25, 850 + 5 * 5 / 2, RIGHT_CLICK,t);
             } else {
                 s = 'capture the beacon to start';
             }

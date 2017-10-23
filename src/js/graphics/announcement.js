@@ -13,8 +13,8 @@ class Announcement {
         if (!this.labels.length) {
             interp(this, 'rectangleHeight', 100, 0, 0.25, 0, null, this.callback);
         } else {
-            interp(this, 'textXOffset', 0, CANVAS_WIDTH, 0.5, 2.5, easeInQuint, () => this.nextLabel());
-            interp(this, 'textXOffset', -CANVAS_WIDTH, 0, 0.5, 0, easeOutQuint);
+            interp(this, 'textXOffset', 0, CANVAS_WIDTH, 0.5, 2.5, 'easeInQuint', () => this.nextLabel());
+            interp(this, 'textXOffset', -CANVAS_WIDTH, 0, 0.5, 0, 'easeOutQuint');
         }
     }
 

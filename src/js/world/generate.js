@@ -20,10 +20,10 @@ function coat(map, width, x) {
     return map;
 }
 
-function generate(rows, cols) {
+function generate(rows, cols, borders = true) {
     seedPerlin();
 
-    const map = [];
+    let map = [];
     for (let row = 0 ; row < rows ; row++) {
         map.push([]);
         for (let col = 0 ; col < cols ; col++) {
@@ -32,5 +32,6 @@ function generate(rows, cols) {
         }
     }
 
-    return coat(coat(map, GRID_EMPTY_PADDING, 0), GRID_OBSTACLE_PADDING, 1);
+    if(borders) { map = coat(coat(map, GRID_EMPTY_PADDING, 0), GRID_OBSTACLE_PADDING, 1) }
+    return map;
 }

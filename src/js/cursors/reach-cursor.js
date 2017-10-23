@@ -70,7 +70,7 @@ class ReachCursor extends ChaseCursor {
 
       let positions = w.down.alt
         ? reachableUnits.freeRectanglePositions(this,radius)
-        : reachableUnits.freeCirclePositions(this, 20, null);
+        : reachableUnits.freeCirclePositions(this, radius, null);
           G.selectionCursor.units.forEach((unit,i,arr) => {
               let position = positions[i];
               if(position) {

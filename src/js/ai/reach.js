@@ -45,7 +45,7 @@ class Reach extends Behavior {
     }
 
     cycle(e) {
-        if(!this.path.length) { return }
+        if(this.path && !this.path.length) { return }
         const nextPosition = this.path[0];
         if (nextPosition) {
             const distance = this.unit.distanceTo(nextPosition);
@@ -53,6 +53,7 @@ class Reach extends Behavior {
             this.unit.moving = true;
 
             if (distance > 0) {
+                // TODO: Here is the bug when unit is spawned on the map
                 this.unit.angle = atan2(nextPosition.y - this.unit.y, nextPosition.x - this.unit.x);
 
                 const appliedDistance = min(distance, this.unit.unitSpeed * e);
@@ -69,10 +70,10 @@ class Reach extends Behavior {
         if (DEBUG) {
             super.render();
         }
-        if (this.unit.team === PLAYER_TEAM) {
+        if (this.unit.controller === PLAYER_TEAM) {
             R.globalAlpha = 0.3;
             beginPath();
-            R.strokeStyle = this.unit.team.body;
+            R.strokeStyle = this.unit.controller.body;
             R.lineWidth = 2;
             moveTo(this.unit.x, this.unit.y);
             this.path.forEach(step => step && lineTo(step.x, step.y));

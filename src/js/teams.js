@@ -26,7 +26,7 @@ const PLAYER_TEAM = {
     'head': '#2f7',
     'beacon': '#65ff4e',
     'behavior': (target,position) => new Reach(target,position),
-    'reinforcementsInterval': 15
+    'reinforcementsInterval': 20
 };
 
 const ENEMY_TEAM = {
@@ -36,5 +36,5 @@ const ENEMY_TEAM = {
     'leg': '#5d0505',
     'beacon': '#ff645b',
     'behavior': () => new Autonomous(),
-    'reinforcementsInterval': 25
+    'reinforcementsInterval': 20
 };

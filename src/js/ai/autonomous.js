@@ -15,7 +15,7 @@ class Autonomous extends Behavior {
     }
     // cache of units
     fetchBeaconPositions(){
-        let filtered            = W.beacons.filter(beacon => beacon.controller === this.unit.team,true);
+        let filtered            = W.beacons.filter(beacon => beacon.controller === this.unit.controller,true);
         this.ourBeacons         = filtered[0];
         this.enemyBeacons       = filtered[1];
         this.defendableBeacons  = this.ourBeacons
@@ -116,11 +116,11 @@ class Autonomous extends Behavior {
                 beacon: conquerableBeacon,
                 'behavior': conquerBehavior,
                 'done': () => {
-                    return conquerableBeacon.controller === this.unit.team;
+                    return conquerableBeacon.controller === this.unit.controller;
                 },
                 'bad': () => {
-                 let enemyHealth     = conquerableBeacon.units.filter(u => this.unit.team !== u.team ).totalHealth();
-                 let friendsHealth   = conquerableBeacon.units.filter(u => this.unit.team === u.team ).totalHealth();
+                 let enemyHealth     = conquerableBeacon.units.filter(u => this.unit.controller !== u.controller ).totalHealth();
+                 let friendsHealth   = conquerableBeacon.units.filter(u => this.unit.controller === u.controller ).totalHealth();
                     return  enemyHealth > friendsHealth
                 }
             };
@@ -135,7 +135,7 @@ class Autonomous extends Behavior {
                 'behavior': defendBehavior,
                 'done': () => {
                     // Done if no one is trying to conquer it anymore
-                    return !defendableBeacon.units.filter(u => u.team !== this.unit.team).length
+                    return !defendableBeacon.units.filter(u => u.controller !== this.unit.controller).length
                 },
                 'bad': () => {
                  let filtered        = defendableBeacon.units.filter(this.unit.isFriendly,true,this)

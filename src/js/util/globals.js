@@ -48,15 +48,16 @@ var DEBUG = false,
     
     SELECTION_MIN_SIZE =  5;
     ANNOUNCEMENT_CELL_SIZE =  8;
-    
-    
-    SELECT_HELP_SIZE =  180;
+
     
     NO_CLICK =  0;
     LEFT_CLICK =  1;
     RIGHT_CLICK =  2;
     CLICK_HIGHLIGHT_PERIOD =  1.8
 
+
+Math.PI2 = Math.PI * 2
+Math.PI3 = Math.PI * 3
 
 Object.keys(constants).forEach(function (key){
     window[key] = constants[key];
@@ -80,6 +81,22 @@ Array.prototype.remove = function(item) {
         return true;
     }
 };
+
+Array.prototype.random = function () {
+    return pick(this)
+}
+
+// TODO: REPLACE by Array.random
+function pick (choices) {
+    return choices.length <= 1
+        ? choices[0]
+        : choices[Math.round(rand(0.0001,choices.length - 1))]
+}
+
+Object.defineProperties(Array.prototype,{
+  first: { get(){ return this[0] }            , configurable: true, enumerable: true},
+  last : { get(){ return this[this.length-1] }, configurable: true, enumerable: true}
+});
 
 class Iterable {
   constructor (interable){
@@ -110,6 +127,8 @@ Number.prototype.range = function(){
 
 Number.prototype.roundp = function(p = 2){ return ~~(this*Math.pow(10,p))/Math.pow(10,p) }
 
+Number.prototype.floorp = function (p = 1){ return ~~(this / p) * p; }
+
 Number.prototype.isBetween = function(a,b){
     return (a <= this && this <= b) || (a >= this && this >= b)
 }
@@ -122,4 +141,18 @@ function between(a, b, c) {
         return c;
     }
     return b;
+}
+
+function zeroes(x) {
+    x = '' + x;
+    while (x.length < 2) {
+        x = '0' + x;
+    }
+    return x;
+}
+
+function formatTime(t) {
+    t = ~~t;
+
+    return zeroes(~~(t / 60)) + ':' + zeroes(t % 60);
 }

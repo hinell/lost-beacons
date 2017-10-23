@@ -52,12 +52,7 @@ function seedPerlin() {
     });
 }
 
-  // ##### Perlin noise stuff
-
-function fade(t) {
-    return t * t * t * (t * (t * 6 - 15) + 10);
-}
-
+// ##### Perlin noise stuff
 function lerp(a, b, t) {
     return (1 - t) * a + t * b;
 }
@@ -73,8 +68,9 @@ function perlin2(x, y) {
     // Wrap the integer cells at 255 (smaller integer period can be introduced here)
     X = X & 255; Y = Y & 255;
 
+    // https://en.wikipedia.org/wiki/Smoothstep
     // Compute the fade curve value for x
-    const u = fade(x);
+    const u = x.smoothStep();
 
     // Interpolate the four results
     return lerp(
@@ -88,6 +84,6 @@ function perlin2(x, y) {
             gradP[X + 1 + perm[Y + 1]].dot2(x - 1, y - 1),
             u
         ),
-        fade(y)
+        y.smoothStep()
     );
 }

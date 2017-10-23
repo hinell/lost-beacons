@@ -1,10 +1,12 @@
 class Game {
 
-    constructor() {
-        G = this;
+    constructor(cfg = {}) {
+        this.renderingContext = cfg.renderingContext;
+        this.rendered         = cfg.rendered;
+        G                     = this;
 
         G.t = 0;
-        G.levelId = 1;
+        G.levelId = 2; // // TODO: BUG, if setting to 1 renders NO space for beacons positioning
         G.MINIMAP_SCALE = MINIMAP_SCALE;
         MINIMAP_SCALE   = G.MINIMAP_SCALE + (.01 / (1 + Math.pow(1.5,(-6 + G.levelId))) )
         // G.launch(GameplayWorld); // creates the world
@@ -16,7 +18,6 @@ class Game {
         G.attackCursor    = new AttackCursor();
         G.reachCursor     = new ReachCursor();
         G.healCursor      = new HealCursor();
-        
         // Main loop, starting point, entry point
         let pts = 0; // previous timestamp
         let frame = (ts) => {
@@ -33,24 +34,15 @@ class Game {
     }
 
     launch(worldType) {
-        new Camera();
-        new worldType(); // instantiate world
-      
-        // Add a proxy object that will call render on the current cursor
-        W.add({
-            // No cursor implements render()
-            // 'render': () => G.cursor.render(),
-
-            // Not post rendering the cursor if hovering a reinforcements button
-            'postRender': () => C.style['cursor'] == 'default' && G.cursor.postRender()
-        }, RENDERABLE);
+        this.viewport = new Camera();
+        new worldType(this.viewport); // instantiate world
     }
     // main cycle
-    cycle(e) {
-        G.t += e;
-        W.cycle(e);
+    cycle(t) {
+        this.t += t;
+        W.cycle(t);
         G.updateCursor();
-        W.render(e);
+        W.render(t,this.renderingContext,this.rendered);
     }
 
     beaconsScore(controller) {
@@ -59,7 +51,7 @@ class Game {
     
 
     unitsScore(controller) {
-        return W.units.filter(u => u.team === controller).length;
+        return W.units.filter(u => u.controller === controller).length;
     }
 
     get minimapWidth() {return MINIMAP_SCALE * W.width;}
@@ -83,7 +75,7 @@ class Game {
         if (G.cursor === G.selectionCursor && G.selectionCursor.downPosition || !G.selectionCursor.units.length) {
             newCursor = G.selectionCursor;
         } else if (unit && (G.selectionCursor.units.length > 1 || G.selectionCursor.units[0] !== unit)) {
-            newCursor = unit.team === PLAYER_TEAM ? G.healCursor : G.attackCursor;
+            newCursor = unit.controller === PLAYER_TEAM ? G.healCursor : G.attackCursor;
             newCursor.setTarget(unit);
         } else if (G.selectionCursor.units.length) {
             newCursor = G.reachCursor;
@@ -93,8 +85,7 @@ class Game {
 
         G.cursor = newCursor;
         G.cursor.move(p);
-
-        C.style['cursor'] = W.beacons.filter(beacon => beacon.inReinforcementsButton(G.cursor)).length ? 'pointer' : 'default';
+        
     }
 
 }

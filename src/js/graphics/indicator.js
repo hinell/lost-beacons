@@ -10,6 +10,7 @@ class Indicator extends Object_ {
         this.target = target;
         // Owner will set color and label
         this.indicateDuration = 0;
+        this.radius = CANVAS_WIDTH / 2 - INDICATOR_MARGIN;
     }
 
     indicate(label, color, duration = 4) {
@@ -28,26 +29,25 @@ class Indicator extends Object_ {
 
     postRender() {
         const t = G.t - (this.indicateTime || -99);
-        const radius = CANVAS_WIDTH / 2 - INDICATOR_MARGIN;
         
-        if (t > this.indicateDuration || this.target.distanceTo(V.center) < radius) {
+        if (t > this.indicateDuration || this.target.distanceTo(V.center) < this.radius) {
             return;
         }
-
+        
         const angle = V.center.angleTo(this.target);
         const cells = requiredCells(this.label);
 
         const labelWidth = cells * INDICATOR_LABEL_CELL_SIZE;
         const labelHeight = 5 * INDICATOR_LABEL_CELL_SIZE;
 
-        const minX = min(V.center.x - labelWidth / 2, V.center.x - abs(cos(angle) * radius));
-        const maxX = max(V.center.x + labelWidth / 2, V.center.x + abs(cos(angle) * radius));
+        const minX = min(V.center.x - labelWidth / 2, V.center.x - abs(cos(angle) * this.radius));
+        const maxX = max(V.center.x + labelWidth / 2, V.center.x + abs(cos(angle) * this.radius));
 
-        const minY = min(V.center.x - labelWidth / 2, V.center.y - abs(sin(angle) * radius));
-        const maxY = max(V.center.y + labelWidth / 2, V.center.y + abs(sin(angle) * radius));
+        const minY = min(V.center.x - labelWidth / 2, V.center.y - abs(sin(angle) * this.radius));
+        const maxY = max(V.center.y + labelWidth / 2, V.center.y + abs(sin(angle) * this.radius));
 
-        const labelX = between(minX, V.center.x + cos(angle) * radius, maxX - labelWidth);
-        const labelY = between(minY, V.center.y + sin(angle) * radius, maxY - labelHeight);
+        const labelX = between(minX, V.center.x + cos(angle) * this.radius, maxX - labelWidth);
+        const labelY = between(minY, V.center.y + sin(angle) * this.radius, maxY - labelHeight);
 
         let label = this.label.substr(0, ~~(t * 30));
         if ((t % 0.5) > 0.25) {
@@ -56,8 +56,9 @@ class Indicator extends Object_ {
         drawText(label, labelX, labelY, INDICATOR_LABEL_CELL_SIZE, this.color, true);
 
         translate(
-            V.center.x + cos(angle) * (radius + INDICATOR_ARROW_SIZE * 2),
-            V.center.y + sin(angle) * (radius + INDICATOR_ARROW_SIZE * 2)
+            // TODO: OPTIMIZE
+            V.center.x + cos(angle) * (this.radius + INDICATOR_ARROW_SIZE * 2),
+            V.center.y + sin(angle) * (this.radius + INDICATOR_ARROW_SIZE * 2)
         );
         rotate(angle);
 
