@@ -1,6 +1,89 @@
+class Behavior {
+    constructor (){
+        this.cycleInterval  = 1;
+        this.cycleTimer     = 0;
+    }
+    attach(unit) {
+        this.unit = unit;
+    }
+    
+    cycle(e) {}
 
-REACH_CURSOR_RADIUS =  GRID_SIZE || 20;
-REACH_CURSOR_PERIOD =  0.4;
+    reconsider() {
+        // implement in subclasses
+        return this;
+    }
+
+    render() {}
+
+    reservedPosition() { return {'x': this.unit.x, 'y': this.unit.y} }
+
+}
+
+class Idle extends Behavior { // TODO maybe get rid of this behavior
+  cycle(){
+    // stay still
+  }
+
+}
+
+class Chase extends Behavior {
+
+    constructor(target, position, radius = 20) {
+        super();
+        this.target     = target;
+        this.position   = position;
+        this.radius     = radius;
+    }
+
+    attach(unit) {
+        this.unit = unit;
+        this.updateSubBehavior();
+    }
+
+    updateSubBehavior() {
+
+        if (!this.target && !this.position) {
+            this.subBehavior = new Idle();
+            return
+        }
+        if (this.unit.distanceTo(this.target) < this.radius
+            && !W.hasObstacleBetween(this.unit, this.target)) {
+            // Target is visible, attack!
+            
+            this.subBehavior = new Idle();
+            
+            // Make sure we're focusing on this specific unit (to avoid having the unit auto-attack another target)
+            this.unit.target   = this.target;
+            this.unit.friendly = this.target.controller === this.unit.controller;
+        } else {
+            this.subBehavior = new Reach(this.target,this.position);
+            // TODO: If no position provided then Reach is too expensive for performance
+            this.position    = undefined; // if target moves then no need to keep this position
+        }
+        this.subBehavior.attach(this.unit);
+    }
+
+    cycle(e) {
+        super.cycle(e);
+        this.cycleTimer -= e;
+        if (this.cycleTimer <= 0) {
+            this.cycleTimer = this.cycleInterval;
+            this.updateSubBehavior();
+        }
+        if (this.subBehavior) this.subBehavior.cycle(e);
+
+    }
+
+    render() {
+        this.subBehavior.render();
+    }
+
+    reservedPosition() {
+        return this.subBehavior.reservedPosition();
+    }
+
+}
 
 class Reach extends Behavior {
 
@@ -9,7 +92,6 @@ class Reach extends Behavior {
         this.position = position; // allows to hint the unit with position outside
         this.target = target;
     }
-    
 
     attach(unit) {
         
