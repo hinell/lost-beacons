@@ -133,6 +133,22 @@ Number.prototype.isBetween = function(a,b){
     return (a <= this && this <= b) || (a >= this && this >= b)
 }
 
+class Canvas {constructor(){return document.createElement('canvas')}}
+
+// @param w - canvas width
+// @param h - canvas height
+// @param c - canvas context or callback
+// @param cb - callback called with context anc canvas parameters (context, canvas instance) =>
+// @return {HTMLCanvasElement} - return canvas
+HTMLCanvasElement.prototype.render = function(w,h,c,cb){
+  this.width = w; this.height = h;
+  if(c.call) {
+    cb = c;
+    c = void 0
+  }
+  return cb(this.getContext(c || '2d'),this) || this
+}
+
 function between(a, b, c) {
     if (b < a) {
         return a;

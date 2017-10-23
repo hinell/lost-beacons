@@ -89,7 +89,7 @@ class World {
         interp(W, 'flashAlpha', 1, 0, 1);
         
                 // Generates grid for map
-        W.floorPattern = cache(GRID_SIZE * 5, GRID_SIZE * 5, (r, c) => {
+        W.floorPattern = new Canvas().render(GRID_SIZE * 5, GRID_SIZE * 5, (r, c) => {
             r.fillStyle = this.color;
             r.fr(0, 0, c.width, c.height);
 
@@ -121,11 +121,10 @@ class World {
             r.fr(GRID_SIZE * 3, GRID_SIZE * 4, GRID_SIZE, GRID_SIZE);
             r.fr(GRID_SIZE * 4, GRID_SIZE * 2, GRID_SIZE, GRID_SIZE);
             r.fr(GRID_SIZE * 1, GRID_SIZE * 3, GRID_SIZE, GRID_SIZE);
-
             return r.createPattern(c, 'repeat');
         });
         
-        this.gridPattern = cache(1, 4, (r, c) => {
+        this.gridPattern = new Canvas().render(1, 4, (r, c) => {
             r.fillStyle = 'rgba(0,0,0,.2)';
             r.fr(0, 0, 1, 1);
             return r.createPattern(c, 'repeat');

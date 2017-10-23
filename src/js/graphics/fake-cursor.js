@@ -25,10 +25,9 @@ class FakeCursor {
     
     static getDataUrl (cb){
     if(this.dataUrl) { return cb(this.dataUrl) }
-    this.rendered        = document.createElement('canvas');
-    this.rendered.width  = 20;
-    this.rendered.height = 20;
-    new FakeCursor().postRender(0,this.rendered.getContext('2d'));
+    this.rendered        = new Canvas()
+        .render(20,20,ctx => new FakeCursor().postRender(0,ctx) );
+        
     this.rendered.toBlob((blob) => {
         let image = new Image();
             image.width  = this.rendered.width;

@@ -416,7 +416,8 @@ function cachedCharacter(t, s, c){
     let constChar = cachedChars.get(key);
     if(constChar){ return constChar }
 
-     constChar = cache(charDef[0].length * s, charDef.length * s, function(r) {
+     constChar = document.createElement('canvas')
+     .render(charDef[0].length * s, charDef.length * s, function(r) {
         r.fillStyle = c;
        let row,col, y, x;
        for (row = 0; row < charDef.length; row++) {
