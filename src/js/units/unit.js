@@ -155,7 +155,7 @@ class Unit extends Object_ {
     cycle(e) {
 
         this.moving = false;
-        this.behavior.cycle(e);
+        this.behaviour.cycle(e);
 
         if ((this.cacheTimer-= e) <= 0) {
             this.cacheTimer     = this.cacheInterval
@@ -181,9 +181,9 @@ class Unit extends Object_ {
 
         if (this.target === this) { this.target = undefined; return }
         if(!this.target) { return }
-        // TODO: Probably here is a bug. If no behavior is set the without having target behavior is almost unpredictable
+        // TODO: Probably here is a bug. If no behaviour is set the without having target behaviour is almost unpredictable
         // TODO: It should know nothing about Behavior instances
-        if(this.distanceTo(this.target) > this.visibilityRadius && this.behavior instanceof Idle) {
+        if(this.distanceTo(this.target) > this.visibilityRadius && this.behaviour instanceof Idle) {
             return this.target = undefined;
         }
         
@@ -272,7 +272,7 @@ class Unit extends Object_ {
 
     render() {
         
-        wrap(() => this.behavior.render());
+        wrap(() => this.behaviour.render());
         
         wrap(() => {
             translate(this.x.floorp(GRID_SIZE), this.y.floorp(GRID_SIZE));
@@ -370,8 +370,8 @@ class Unit extends Object_ {
     }
 
     setBehavior(b) {
-        this.behavior = b;
-        this.behavior.attach(this);
+        this.behaviour = b;
+        this.behaviour.attach(this);
     }
 
     isSelected() {

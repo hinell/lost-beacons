@@ -1,4 +1,4 @@
-class Autonomous extends Behavior {
+class Autonomous extends Behaviour {
 
     constructor() {
         super();
@@ -61,7 +61,7 @@ class Autonomous extends Behavior {
         if (retreatPosition) {
             const retreatBehavior = new Reach(retreatPosition);
             const retreatDecision = {
-                'behavior': retreatBehavior,
+                'behaviour': retreatBehavior,
                 'done': () => {
                     return this.unit.health < this.unit.healthSize && retreatPosition.distanceTo(this.unit) <= this.unit.radius
                 },
@@ -78,7 +78,7 @@ class Autonomous extends Behavior {
         if (attackedUnit) {
             const attackBehavior = new Chase(attackedUnit, null, attackedUnit.attackRadius);
             const attackDecision = {
-                'behavior': attackBehavior,
+                'behaviour': attackBehavior,
                 'done': () => {
                     return attackedUnit.dead;
                 },
@@ -96,7 +96,7 @@ class Autonomous extends Behavior {
         if (friend && friend.firing) {
             const regroupBehavior = new Chase(friend, null, friend.healRadius);
             const regroupDecision = {
-                'behavior': regroupBehavior,
+                'behaviour': regroupBehavior,
                 'done': () => {
                     return friend.distanceTo(this.unit) < friend.healRadius;
                 },
@@ -114,7 +114,7 @@ class Autonomous extends Behavior {
             const conquerBehavior = new Reach(conquerableBeacon);
             const conquerDecision = {
                 beacon: conquerableBeacon,
-                'behavior': conquerBehavior,
+                'behaviour': conquerBehavior,
                 'done': () => {
                     return conquerableBeacon.controller === this.unit.controller;
                 },
@@ -132,7 +132,7 @@ class Autonomous extends Behavior {
             const defendBehavior = new Reach(defendableBeacon);
             const defendDecision = {
                 beacon: defendableBeacon,
-                'behavior': defendBehavior,
+                'behaviour': defendBehavior,
                 'done': () => {
                     // Done if no one is trying to conquer it anymore
                     return !defendableBeacon.units.filter(u => u.controller !== this.unit.controller).length
@@ -159,7 +159,7 @@ class Autonomous extends Behavior {
         
         if(!decision) { return }
         this.currentDecision = decision;
-        this.subBehavior = this.currentDecision.behavior;
+        this.subBehavior = this.currentDecision.behaviour;
         this.subBehavior.attach(this.unit);
     }
   

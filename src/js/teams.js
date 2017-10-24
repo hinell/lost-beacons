@@ -4,7 +4,7 @@ const NEUTRAL_TEAM = {
     'leg': '#fff',
     'head': '#fff',
     'beacon': '#fff',
-    'behavior': () => new Idle(),
+    'behaviour': () => new Idle(),
     'reinforcementsInterval': 25
 };
 
@@ -14,7 +14,7 @@ const NEMESIS_TEAM = {
     'leg': '#191818',
     'head': '#daaaff',
     'beacon': '#ee61b1',
-    'behavior': () => new Idle(),
+    'behaviour': () => new Idle(),
     'reinforcementsInterval': 15
 };
 
@@ -25,7 +25,7 @@ const PLAYER_TEAM = {
     'leg': '#381',
     'head': '#2f7',
     'beacon': '#65ff4e',
-    'behavior': (target,position) => new Reach(target,position),
+    'behaviour': (target,position) => new Reach(target,position),
     'reinforcementsInterval': 20
 };
 
@@ -35,6 +35,6 @@ const ENEMY_TEAM = {
     'body': '#ac0404',
     'leg': '#5d0505',
     'beacon': '#ff645b',
-    'behavior': () => new Autonomous(),
+    'behaviour': () => new Autonomous(),
     'reinforcementsInterval': 20
 };

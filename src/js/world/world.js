@@ -150,7 +150,7 @@ class World {
           if(!(unit = units[i])) { return };
           unit.x = position.x;
           unit.y = position.y;
-          unit.setBehavior((controller || unit.controller).behavior(position)); // set default unit behaviour
+          unit.setBehavior((controller || unit.controller).behaviour(position)); // set default unit behaviour
           W.add(unit, UNIT | CYCLABLE | RENDERABLE)
         })
     }
@@ -204,6 +204,7 @@ class World {
 
     }
     
+    // TODO: Create separte Class MiniMap
     renderMinimap() {
         wrap(() => {
             translate(
@@ -335,7 +336,7 @@ class World {
             .forEach(r => {
                 if(r.render){
                     // TODO: BUG  Indicator won't render cause it is attached to the beacon
-                    if(r instanceof Unit && r.behavior instanceof Reach) { return wrap(() => r.render(t,ctx,canvas)) } // render path
+                    if(r instanceof Unit && r.behaviour instanceof Reach) { return wrap(() => r.render(t,ctx,canvas)) } // render path
                     if((r.x || r.y) && V.contains(r.x,r.y,10)){ wrap(() => r.render(t,ctx,canvas)) }
                     else { wrap(() => r.render(t,ctx,canvas)) }
                 }

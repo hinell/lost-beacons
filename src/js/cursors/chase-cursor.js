@@ -89,9 +89,9 @@ class HealCursor extends ChaseCursor {
             G.selectionCursor.units.forEach((unit,i) => {
             let position = positions[i];
             if(unit === this.target                 ) { return unit.setBehavior(new Idle()) }
-            if(unit.behavior.target === unit        ) { return }
+            if(unit.behaviour.target === unit        ) { return }
                 unit.setBehavior(new Chase(this.target,position,unit.healRadius))
-                this.drawPositionCircles(unit.behavior.reservedPosition())
+                this.drawPositionCircles(unit.behaviour.reservedPosition())
             });
             positions = null
         }
@@ -116,7 +116,7 @@ class AttackCursor extends ChaseCursor {
             , angleForPosition)
         
             G.selectionCursor.units.forEach((unit,i) => {
-            if (unit.behavior.target === this.target ) { return }
+            if (unit.behaviour.target === this.target ) { return }
             if (unit === this.target || !positions[i] || unit.distanceTo(this.target) < unit.attackRadius ) {
                 return unit.setBehavior(new Idle())
             }

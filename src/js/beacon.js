@@ -218,7 +218,7 @@ class Beacon extends Object_ {
             unit.x = this.x; // setting up its current location
             unit.y = this.y; //
             // TODO: spawn only if space is available
-            unit.setBehavior(this.controller.behavior(this,freePositionsAround[i]));
+            unit.setBehavior(this.controller.behaviour(this,freePositionsAround[i]));
             W.add(unit);
             i++
         }

@@ -35,7 +35,7 @@
 //
 // require("script-loader!./units/unit.js");
 //
-// require("script-loader!./ai/behavior.js");
+// require("script-loader!./ai/behaviour.js");
 // require("script-loader!./ai/idle.js");
 // require("script-loader!./ai/chase.js");
 // require("script-loader!./ai/reach.js");

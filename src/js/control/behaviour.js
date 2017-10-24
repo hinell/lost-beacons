@@ -1,4 +1,4 @@
-class Behavior {
+class Behaviour {
     constructor (){
         this.cycleInterval  = 1;
         this.cycleTimer     = 0;
@@ -20,14 +20,14 @@ class Behavior {
 
 }
 
-class Idle extends Behavior { // TODO maybe get rid of this behavior
+class Idle extends Behaviour { // TODO maybe get rid of this behaviour
   cycle(){
     // stay still
   }
 
 }
 
-class Chase extends Behavior {
+class Chase extends Behaviour {
 
     constructor(target, position, radius = 20) {
         super();
@@ -85,7 +85,7 @@ class Chase extends Behavior {
 
 }
 
-class Reach extends Behavior {
+class Reach extends Behaviour {
 
     constructor(target,position) {
         super();
