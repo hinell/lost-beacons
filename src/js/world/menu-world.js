@@ -27,17 +27,28 @@ class MenuWorld extends World {
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         ];
 
+    this.controllers = [
+            this.human   = new Human()
+        ,   this.nemesis = new Nemesis()
+    ]
     let beacon = new Beacon();
         beacon.x = W.center.x-25;
         beacon.y = W.center.y + 100;
-        beacon.controller = NEUTRAL_TEAM;
         beacon.control = 0;
     // beacon.indicator.postRender = () => 0;
       
-        W.spawnSquad(beacon ,W.createSquad(NEMESIS_TEAM,3,Unit)   );
+        W.spawnSquad(beacon ,3..range().map(n => {
+            n = new Unit()
+            this.nemesis.control(n);
+            return n
+        }));
         W.add(beacon);
         
-    let units = w.units = 5..range().map(n => W.createSquad(PLAYER_TEAM,10,Unit)).reduce((arr,c) => arr.concat(c),new Units());
+    let units = 50..range().map(n => {
+            this.human.control(n = new Unit())
+            return n
+        })
+        w.units = units = new Units(units);
         units.forEach(u => u.setBehavior(new Idle()) );
     
     let leftUnits     = units.slice(0,units.length/2);
@@ -77,7 +88,7 @@ class MenuWorld extends World {
         // checking if need to start a new game
         const endGameChecker = {
             'cycle': () => {
-                if (beacon.controller === PLAYER_TEAM) {
+                if (beacon.controller === this.human) {
                     this.launch();
                     W.remove(endGameChecker);
                 }
@@ -105,10 +116,10 @@ class MenuWorld extends World {
             if (!G.selectionCursor.selection.length) {
                 s = 'click left     to select units';
                 G.reachCursor.sentUnits = false;
-                fakeMouse(555, 850 + 5 * 5 / 2, LEFT_CLICK,t);
+                fakeMouse(655, 850 + 5 * 5 / 2, LEFT_CLICK,t);
             } else if (!G.reachCursor.sentUnits) {
                 s = 'click right     to send units';
-                fakeMouse(555 + 25, 850 + 5 * 5 / 2, RIGHT_CLICK,t);
+                fakeMouse(655 + 25, 850 + 5 * 5 / 2, RIGHT_CLICK,t);
             } else {
                 s = 'capture the beacon to start';
             }

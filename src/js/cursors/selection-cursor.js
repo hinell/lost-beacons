@@ -2,10 +2,11 @@ class SelectionCursor extends Cursor {
 
     constructor(canvas) {
         super(canvas);
-        this.selection = new Objects();
+        this.selection = new Units();
     }
 
-    postRender() {
+    postRender(t,ctx) {
+        
         if (this.downPosition && this.distanceTo(this.downPosition)) {
             R.strokeStyle   = 'hsla(107,70%,50%,0.1)';
             R.fillStyle     = 'hsla(107,70%,50%,0.1)';
@@ -24,6 +25,19 @@ class SelectionCursor extends Cursor {
             );
           
         if(this.units.length){
+            /*if (DEBUG) {
+              ctx.fillStyle =
+                ctx.strokeStyle = '#fff';
+              ctx.beginPath()
+              let p     = performance.now();
+              let coord = this.units.coord
+              ctx.arc(coord.x,coord.y,5,0,Math.PI2);
+              ctx.fill()
+              ctx.beginPath();
+              ctx.arc(coord.x,coord.y,coord.r,0,Math.PI2);
+              ctx.stroke();
+            }*/
+          
             R.beginPath();
             R.font = '14px bold Arial, sans-serif'
             R.fillStyle = '#ffffff';
@@ -39,7 +53,7 @@ class SelectionCursor extends Cursor {
         this.y = p.y;
         if(this.downPosition) {
             this.selection = W.units
-             .filter(unit => unit.controller === PLAYER_TEAM)
+             .filter(unit => unit.controller instanceof Human)
              .filter(unit => {
                 if (this.distanceTo(this.downPosition) < 5) {
                     return unit.distanceTo(this.downPosition) < 20;
@@ -52,7 +66,7 @@ class SelectionCursor extends Cursor {
     }
 
     get units() {
-        return this.selection.filter(unit => !unit.dead);
+        return this.selection.alive;
     }
 
 }

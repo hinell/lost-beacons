@@ -121,7 +121,9 @@ class World {
             r.fr(GRID_SIZE * 3, GRID_SIZE * 4, GRID_SIZE, GRID_SIZE);
             r.fr(GRID_SIZE * 4, GRID_SIZE * 2, GRID_SIZE, GRID_SIZE);
             r.fr(GRID_SIZE * 1, GRID_SIZE * 3, GRID_SIZE, GRID_SIZE);
-            return r.createPattern(c, 'repeat');
+        let pattern = r.createPattern(c, 'repeat');
+            pattern.canvas = c;
+            return pattern;
         });
         
         this.gridPattern = new Canvas().render(1, 4, (r, c) => {
@@ -204,7 +206,7 @@ class World {
 
     }
     
-    // TODO: Create separte Class MiniMap
+    // TODO: Create separate Class MiniMap
     renderMinimap() {
         wrap(() => {
             translate(
@@ -246,8 +248,7 @@ class World {
             );
 
             R.globalAlpha = 1;
-            W.units
-                .forEach(unit => {
+            W.units.forEach(unit => {
                     R.beginPath();
                     R.strokeStyle = R.fillStyle = unit.controller.body;
                     let x = unit.x * MINIMAP_SCALE - 2;
@@ -267,6 +268,7 @@ class World {
         });
     }
 
+    // TODO: Create a separate class Gauge
     gauge (x, y, value, width, sign, color) {
         const w = (5 + width) * sign;
         let centerY = HUD_SCORE_CELL_SIZE / 2;
@@ -280,6 +282,7 @@ class World {
         drawCenteredText('' + value, x + w + sign * 15, y, HUD_SCORE_CELL_SIZE, color, true);
     }
     
+    // TODO: Create a separate class HUD
     renderHUD(e) {
         wrap(() => {
             translate(CANVAS_WIDTH / 2, CANVAS_HEIGHT - HUD_HEIGHT);
@@ -298,27 +301,29 @@ class World {
                 fill();
                 stroke();
             }
-
+            let human = this.human;
+            let enemy = this.ai;
+            // TODO: Move these to the Controllers' viewport
             drawCenteredText('beacons', 0, 3, HUD_SCORE_CELL_SIZE, '#fff', true);
-            this.gauge(-HUD_GAUGE_GAP / 2, 3, G.beaconsScore(PLAYER_TEAM), G.beaconsScore(PLAYER_TEAM) / W.beacons.length * 100, -1, '#0f0');
-            this.gauge(HUD_GAUGE_GAP /  2, 3, G.beaconsScore(ENEMY_TEAM) , G.beaconsScore(ENEMY_TEAM) / W.beacons.length * 100, 1  , '#f00');
+            this.gauge(-HUD_GAUGE_GAP / 2, 3, G.beaconsScore(human), G.beaconsScore(human) / W.beacons.length * 100, -1, '#0f0');
+            this.gauge(HUD_GAUGE_GAP /  2, 3, G.beaconsScore(enemy) , G.beaconsScore(enemy) / W.beacons.length * 100, 1  , '#f00');
             
             drawCenteredText('units', 0, 18, HUD_SCORE_CELL_SIZE, '#fff', true);
-            let playerUnits = G.unitsScore(PLAYER_TEAM);
-            let enemyUnits = G.unitsScore(ENEMY_TEAM);
+            let playerUnits = G.unitsScore(human);
+            let enemyUnits = G.unitsScore(enemy);
             let maxUnits = max(playerUnits, enemyUnits);
 
-            this.gauge(-HUD_GAUGE_GAP / 2, 18, G.unitsScore(PLAYER_TEAM), G.unitsScore(PLAYER_TEAM) / maxUnits * 100, -1, '#0f0');
-            this.gauge(HUD_GAUGE_GAP / 2 , 18, G.unitsScore(ENEMY_TEAM), G.unitsScore(ENEMY_TEAM) / maxUnits * 100, 1, '#f00');
+            this.gauge(-HUD_GAUGE_GAP / 2, 18, G.unitsScore(human), G.unitsScore(human) / maxUnits * 100, -1, '#0f0');
+            this.gauge(HUD_GAUGE_GAP / 2 , 18, G.unitsScore(enemy), G.unitsScore(enemy) / maxUnits * 100, 1, '#f00');
             
             drawCenteredText('available', 0, 33, HUD_SCORE_CELL_SIZE, '#fff', true);
-            let availableUnitsPlayer = W.beacons.filter(b => b.controller === PLAYER_TEAM ).reduce((availUnits,b) => availUnits+b.readyUnits.length ,0);
-            let availableUnitsEnemy  = W.beacons.filter(b => b.controller === ENEMY_TEAM ).reduce((availUnits,b) => availUnits+b.readyUnits.length ,0);
+            let availableUnitsPlayer = W.beacons.filter(b => b.controller === human ).readyToSpawn.length;
+            let availableUnitsEnemy  = W.beacons.filter(b => b.controller === enemy ).readyToSpawn.length;
                 if(availableUnitsPlayer > 999) { availableUnitsPlayer = 999 }
                 if(availableUnitsEnemy  > 999) { availableUnitsEnemy  = 999 }
                 
             this.gauge(-HUD_GAUGE_GAP / 2, 33, availableUnitsPlayer, availableUnitsPlayer / maxUnits * 100 , -1, '#0f0');
-            this.gauge(HUD_GAUGE_GAP / 2 , 33, availableUnitsEnemy,  availableUnitsEnemy  / maxUnits * 100, 1, '#f00');
+            this.gauge( HUD_GAUGE_GAP / 2 ,33, availableUnitsEnemy,  availableUnitsEnemy  / maxUnits * 100,   1, '#f00');
         });
     }
     
@@ -359,7 +364,6 @@ class World {
                 }
             });
             
-            
         });
 
         if (W.flashAlpha) {
@@ -372,10 +376,13 @@ class World {
       
 
         R.fillStyle = 'rgba(255,255,255,.15)';
-        fr(0, ~~(G.t * 100) % CANVAS_HEIGHT * 1.5, CANVAS_WIDTH, 0.5);
-
+        
+        fr(0, ~~(G.t * 50) % CANVAS_HEIGHT * 1.5, CANVAS_WIDTH, 0.5);
+        
         R.fillStyle = 'rgba(255,255,255,.02)';
-        fr(0, ~~(G.t * 50) % CANVAS_HEIGHT * 1.5 - 100, CANVAS_WIDTH, 100);
+        fr(0, ~~(G.t * 60) % CANVAS_HEIGHT * 1.5 - 50, CANVAS_WIDTH, 1);
+        
+        fr(0, ~~(G.t * 80) % CANVAS_HEIGHT * 1.5, CANVAS_WIDTH, 100)
 
 
         R.fillStyle = this.gridPattern;
@@ -392,7 +399,7 @@ class World {
     }
     
     get center() {
-        return new Object_({x : (this.width / 2).floorp()  , y : (this.height / 2).floorp() })
+        return new Object_({x: (this.width / 2).clip()  , y: (this.height / 2).clip() })
     }
 
     add(instance, types) {
@@ -432,7 +439,18 @@ class World {
 
     cycle(e) {
         W.t += e;
-        V.cycle(e)
+        V.cycle(e);
+        // Removes dead units
+        this.units = this.units.alive;
+        this.cyclables = this.cyclables.filter(cyclable => {
+            if(cyclable instanceof Unit){ return !cyclable.isDead }
+            return true
+        });
+        this.renderables = this.renderables.filter(cyclable => {
+            if(cyclable instanceof Unit){ return !cyclable.isDead }
+            return true
+        });
+        
         W.cyclables.forEach(x => x.cycle && x.cycle(e));
 
     }

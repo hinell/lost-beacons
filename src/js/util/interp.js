@@ -17,8 +17,8 @@ Number.prototype.easeInQuint = function (start = 0, end = 1, duration = 1) {
 }
 
 Number.prototype.easeOutQuint = function (start, end, duration = 1) {
-    let t = this / duration;
-    return ((t-1)*t*t*t*t + 1) * (end - start) + start;
+    let t = this / duration-1;
+    return ((t)*t*t*t*t + 1) * (end - start) + start;
 }
 
 

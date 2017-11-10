@@ -9,7 +9,7 @@ class ChaseCursor extends Cursor {
     postRender() {
         const s = 1 - (G.t % CHASE_CURSOR_PERIOD) / CHASE_CURSOR_PERIOD;
 
-        translate(this.target.x, this.target.y);
+        translate(this.target.x,this.target.y);
 
         const corner = a => () => {
             translate(cos(a) * CHASE_CURSOR_RADIUS, sin(a) * CHASE_CURSOR_RADIUS);
@@ -63,11 +63,13 @@ class ChaseCursor extends Cursor {
         // interp(circle, 'a', 1, 0, .6, 0, 0, i => W.remove(circle));
         this.circlesDrawing = false
     }
+    
+    drawRectangles(){/* TODO: Implement*/}
 
     setTarget(target) {
         this.target = target;
-        this.x = target.x;
-        this.y = target.y;
+        this.x      = target.x;
+        this.y      = target.y;
     }
     
     rightDown() { /*implement in subclasses*/ }
@@ -154,11 +156,11 @@ class ReachCursor extends ChaseCursor {
             });
         }
 
-        const beacon = W.beacons.closestTo(this)[0];
+        const beacon = W.beacons.sortByClosestTo(this)[0];
 
-        if (beacon) {
+        if (beacon && beacon.controller) {
             const offset = (G.t * 1 % 1) * arrowRadius;
-            R.fillStyle = PLAYER_TEAM.beacon;
+            R.fillStyle = beacon.controller.beacon;
             arrow(beacon.x, offset + beacon.y - 50, 1 - offset / arrowRadius);
             arrow(beacon.x, offset + beacon.y - arrowRadius - 50, 1);
             arrow(beacon.x, offset + beacon.y - arrowRadius * 2 - 50, offset / arrowRadius);
@@ -178,7 +180,7 @@ class ReachCursor extends ChaseCursor {
         let text = 'REACH()', target;
         if(beacon && this.distanceTo(beacon) < beacon.conquerRadius){
             target = beacon
-            text = beacon.controller === PLAYER_TEAM ? 'DEFEND()' : 'CAPTURE()'
+            text = beacon.controller instanceof Human ? 'DEFEND()' : 'CAPTURE()'
         }
         
         this.renderLabel(text,target);
@@ -193,29 +195,19 @@ class ReachCursor extends ChaseCursor {
     
     rightDown(target,e) {
           target = new Object_(target);
+      let selectedUnits = G.selectionCursor.units;
+      let radius = selectedUnits.first.radius; // minimal unit radius
       
-      let radius = G.selectionCursor.units.first.radius; // minimal unit radius
-      
-      let nearestBeacon = W.beacons.closestTo(target).first;
-      let reachableUnits= nearestBeacon.units.length
-        ? nearestBeacon.units
-        : W.units
+      let closestBeacon = W.beacons.sortByClosestTo(target).first;
+      let reachableUnits= target.distanceTo(closestBeacon) < closestBeacon.unitsDetectionRadius
+        ? closestBeacon.units
+        : W.units;
 
       let positions = w.down.alt
         ? reachableUnits.freeRectanglePositions(target,radius)
         : reachableUnits.freeCirclePositions(target, radius, null);
-          G.selectionCursor.units.forEach((unit,i,arr) => {
-              let position = positions[i];
-              if(position) {
-                  unit.setBehavior(new Reach(target, position));
-                  this.drawPositionCircles(position)
-              } else {
-              //stay still if no position is available
-                unit.setBehavior(new Idle())
-              }
-              this.sentUnits = true;
-          });
-          positions = null
+        selectedUnits.move(positions);
+        positions.slice(0,selectedUnits.length).forEach(p => this.drawPositionCircles(p))
     }
 
 }

@@ -1,207 +1,267 @@
-class Autonomous extends Behaviour {
+class BeaconConquest extends Task {
 
-    constructor() {
-        super();
-        this.currentDecision = null;
-        
-        this.cycleInterval = 6;
-        this.cycleTimer    = 0; // cycle immediately
-        
-        this.cacheInterval = 3;
-        this.cacheTimer    = 0; // update cache immediately
-        
-        this.ourBeacons    = new Beacons();
-        this.enemyBeacons  = new Beacons();
-    }
-    // cache of units
-    fetchBeaconPositions(){
-        let filtered            = W.beacons.filter(beacon => beacon.controller === this.unit.controller,true);
-        this.ourBeacons         = filtered[0];
-        this.enemyBeacons       = filtered[1];
-        this.defendableBeacons  = this.ourBeacons
-            .closestTo(this.unit)
-            .filter(b => b.conquered)
-    }
-    
-    attach(unit) {
-        super.attach(unit);
-    }
-    // too slow don't used it
-    
-    retreatPosition() {
-        const positions = [];
-        for (let i = 0 ; i < 5 ; i++) {
-            const a = (i / 10) * PI * 2;
-            let position = {
-                'x': this.unit.x + cos(a) * this.unit.attackRadius,
-                'y': this.unit.y + sin(a) * this.unit.attackRadius
-                }
-            W.pointInObstacle(position) || positions.push();
-        }
-
-        // Return a position that is available and not close to any enemy
-        return new Object_(pick(positions));
-    }
-    
-    weakFridnlyUnit(){
-        // TODO: implement
-        this.closestFriends().closestTo(this.unit);
-    }
-    
-    updateSubBehavior() {
-        if (this.currentDecision
-            && !this.currentDecision.done()
-            && !this.currentDecision.bad()
-        ) {return}
-
-        let decisions = [];
-        
-        let retreatPosition;
-        if (this.unit.health < this.unit.healthSize) { retreatPosition = this.retreatPosition() }
-        if (retreatPosition) {
-            const retreatBehavior = new Reach(retreatPosition);
-            const retreatDecision = {
-                'behaviour': retreatBehavior,
-                'done': () => {
-                    return this.unit.health < this.unit.healthSize && retreatPosition.distanceTo(this.unit) <= this.unit.radius
-                },
-                'bad': () => {
-                    return this.unit.health === this.unit.healthSize && this.unit.closestEnemies.at(retreatPosition).length
-                }
-            };
-            retreatDecision.label = 'retreatPosition';
-            decisions.push(retreatDecision);
-        }
-        
-        // enemy units that are near to this unit
-        const attackedUnit = this.unit.closestEnemies.closestTo(this.unit)[0];
-        if (attackedUnit) {
-            const attackBehavior = new Chase(attackedUnit, null, attackedUnit.attackRadius);
-            const attackDecision = {
-                'behaviour': attackBehavior,
-                'done': () => {
-                    return attackedUnit.dead;
-                },
-                'bad': () => {
-                    let enemyHealth     = attackedUnit.closestFriends.totalHealth();
-                    let friendsHealth   = this.unit.closestFriends.totalHealth();
-                    return  enemyHealth > friendsHealth;
-                }
-            };
-            attackDecision.label = 'attackedUnit';
-            decisions.push(attackDecision);
-        }
-
-        const friend = this.unit.closestFriends.closestTo(this.unit)[0];
-        if (friend && friend.firing) {
-            const regroupBehavior = new Chase(friend, null, friend.healRadius);
-            const regroupDecision = {
-                'behaviour': regroupBehavior,
-                'done': () => {
-                    return friend.distanceTo(this.unit) < friend.healRadius;
-                },
-                'bad': () => {
-                    let enemyHealth     = friend.closestEnemies.totalHealth();
-                    let friendsHealth   = friend.closestFriends.totalHealth();
-                    return  !friend.firing && enemyHealth >= friendsHealth;
-                }
-            };
-            decisions.push(regroupDecision);
-        }
-
-        const conquerableBeacon = pick(this.enemyBeacons);
-        if (conquerableBeacon) {
-            const conquerBehavior = new Reach(conquerableBeacon);
-            const conquerDecision = {
-                beacon: conquerableBeacon,
-                'behaviour': conquerBehavior,
-                'done': () => {
-                    return conquerableBeacon.controller === this.unit.controller;
-                },
-                'bad': () => {
-                 let enemyHealth     = conquerableBeacon.units.filter(u => this.unit.controller !== u.controller ).totalHealth();
-                 let friendsHealth   = conquerableBeacon.units.filter(u => this.unit.controller === u.controller ).totalHealth();
-                    return  enemyHealth > friendsHealth
-                }
-            };
-            conquerDecision.label = 'conquerableBeacon';
-            decisions.push(conquerDecision);
-        }
-        const defendableBeacon = this.defendableBeacons[0];
-        if (defendableBeacon) {
-            const defendBehavior = new Reach(defendableBeacon);
-            const defendDecision = {
-                beacon: defendableBeacon,
-                'behaviour': defendBehavior,
-                'done': () => {
-                    // Done if no one is trying to conquer it anymore
-                    return !defendableBeacon.units.filter(u => u.controller !== this.unit.controller).length
-                },
-                'bad': () => {
-                 let filtered        = defendableBeacon.units.filter(this.unit.isFriendly,true,this)
-                 let enemyHealth     = filtered[0].totalHealth();
-                 let friendsHealth   = filtered[1].totalHealth();
-                    return  enemyHealth > friendsHealth
-                }
-            };
-            defendableBeacon.label = 'defendableBeacon';
-            decisions.push(defendDecision);
-        }
-
-        
-        if (!decisions.length) { return }
-        let goodDecisions;
-            goodDecisions = decisions.filter(decision => !decision.done() && !decision.bad());
-        let decision;
-        if( goodDecisions.length === 1) { decision = goodDecisions[0]}
-        if(!decision) {  decision = pick(goodDecisions) } // try again
-        if(!decision && goodDecisions.length > 1) {  decision = pick(goodDecisions) } // and again
-        
-        if(!decision) { return }
-        this.currentDecision = decision;
-        this.subBehavior = this.currentDecision.behaviour;
-        this.subBehavior.attach(this.unit);
-    }
+  constructor (beacon,controller,exec) {
+    super(beacon,controller,exec);
+    this.beacon = beacon;
+    this.name = 'CONQUEST'
+  }
   
-    cycle(e) {
-        // super.cycle(e); temporary workaround for performance gain
+  get done(){
+  return this.beacon.controller === this.controller
+    && this.beacon.nearbyEnemies.length === 0
+  }
+  
+  get bad (){
+    if(this.beacon.units.length === 0) { return false }
+      let enemyUnitsHealth = this.beacon.units.filter(u => this.controller.isHostile(u.controller)).health;
+      return enemyUnitsHealth > this.executor.health;
+  }
+}
 
-        if ((this.cacheTimer -= e) <= 0) { this.cacheTimer = this.cacheInterval; this.fetchBeaconPositions() }
-        if ((this.cycleTimer -= e) <= 0) {
-           this.cycleTimer = this.cycleInterval;
-           this.ourBeacons.length && this.ourBeacons
-            .filter(b => b.readyUnits.length )
-            .forEach(b => b.spawnUnits())
+class BeaconDefence extends Task {
+
+  constructor (beacon,controller,executor) {
+    super(beacon,controller,executor);
+    this.beacon              = beacon;
+    this.name                = 'DEFENCE'
+  }
+  // Done if no one is trying to conquer it anymore
+  get done(){
+  return this.beacon.controller === this.controller
+    && !this.beacon.isConquered
+    && !this.beacon.nearbyEnemies.length
+  }
+  
+  get bad (){
+    let frUnitsHp = 0;
+    if(this.beacon.controller === this.controller) { frUnitsHp = this.beacon.readyUnitsHealth }
+    return this.beacon.units.filter(u => this.controller.isHostile(u)).health > this.executor.health
+  }
+}
+
+class SquadAssistence extends Task {
+  constructor(squadTarget,controller){
+    if(!squadTarget){throw new Error('Invalid argument: squadTarget is required!')}
+    super(squadTarget,controller);
+    this.squad        = squad;
+    this.squadTarget  = squadTarget;
+  }
+  get done() { return !this.squadTarget.isEngaged.filter(u => u.beacon).length }
+  get bad () { return this.squadTarget.enemiesAttacking.length > (this.squad.length / 2).roundp() }
+}
+
+class Reatret extends Task {
+
+  constructor (position) {
+    super(position);
+    this.position = position;
+  }
+  
+  get done(){return this.executor.distanceTo(this.position) <= (this.executor.random().visibilityRadius / 2).roundp() }
+  
+  get bad (){
+    if(  this.position instanceof Squad
+      || this.position instanceof Beacon
+      || this.position instanceof Unit){
+      return this.position.enemiesAroundHealth > this.executor.health
+    }
+    return true
+  }
+}
+
+class AI extends Controller {
+
+  constructor (cfg) {
+    super(cfg);
+    this.name = 'Old machine';
+    this.reinforcementsInterval = 15;
+    
+    this.style.head   = '#850000',
+    this.style.body   = '#ac0404',
+    this.style.leg    = '#5d0505',
+    this.style.beacon = '#ff645b',
+    
+    Object.assign(this,this.style);
+    
+    // timings
+    this.cycleInterval = 2;
+    this.cycleTimer    = 0; // cycle immediately
+    
+    this.cacheInterval = 4;
+    this.cacheTimer    = 0;
+    
+    // targets for tasks
+    
+    this.conquerableBeacons = new Beacons();
+    this.defensibleBeacons  = new Beacons();
+    
+
+    this.beaconsControlUnit = {};
+    
+    this.idleUnits    = new Squad();
+    this.idleSquads   = new Platoon([],this); // all inactive squads
+    this.idlePlatoons = new Infantry();
+    
+    this.unsupervisedSquads   = new Platoon();
+  }
+  
+  // Call after this.beacons.spawnUnits
+  mobilizeSquads(){
+    this.unitsPerSquad    = 4..random(12).roundp();
+    if(this.unsupervisedUnits.length > 0) {
+      while (this.unsupervisedUnits.length > 0){
+        // idleUntis are pused by a separate call on the beacons
+        let lowUnitsSquad = this.squads.filter(s => s.length < this.unitsPerSquad).first;
+        let squad  = lowUnitsSquad || new Squad();
+        let amount = this.unitsPerSquad - squad.length;
+        if(!amount) { continue }
+        let units  = this.unsupervisedUnits.extract(amount);
+        if(units.first.superviser){}
+            squad.MOBILIZED = 'MOBILIZED'
+            squad.assign(units.subgroup);
+        this.control(squad);
+        
+        this.squads.push(squad);
+        this.idleSquads.push(squad);
+        this.unsupervisedSquads.push(squad);
+        
+        this.unitsPerSquad = 4..random(12).roundp();
+      }
+    }
+  }
+  
+  mobilizePlatoons(){
+    this.squadsPerPlatoon = 2..random(8).roundp();
+    this.mobilizeSquads()
+    // if(this.unsupervisedSquads.length <= this.squadsPerPlatoon){}
+    if(this.unsupervisedSquads.length > 0) {
+      while (this.unsupervisedSquads.length >= this.squadsPerPlatoon) {
+        let uncrowdedPlatoon = this.platoons.filter(p => p.length < this.squadsPerPlatoon).random();
+        let platoon          = uncrowdedPlatoon || new Platoon();
+        let unsupervised     = this.unsupervisedSquads.extract(this.squadsPerPlatoon - platoon.length);
+            platoon          = this.control(platoon);
+            platoon.assign(unsupervised.subgroup);
+            platoon.MOBILIZED = 'MOBILIZED'
             
-            this.updateSubBehavior();
-        }
+        this.platoons.push(platoon);
+        this.idlePlatoons.push(platoon);
         
-        if (this.subBehavior) this.subBehavior.cycle(e);
+        this.squadsPerPlatoon = 2..random(8).roundp();
+      }
     }
-
-    reconsider() {
-        return this; // never change the AI
+  }
+  
+  idleTaskForce(){
+    if(this.idlePlatoons.length === 1) { return this.idlePlatoons.first }
+    if(this.idlePlatoons.length) {
+      let start = 0..random(2)
+      return this.idlePlatoons.slice(start,start.random(4))
     }
-
-    render() {
+    
+    if(this.idleSquads.length){
+      return this.idleSquads.slice(0,1..random(8))
+    }
+    
+    if(this.idleUnits.length){
+      return this.idleUnits.slice(0,1..random(16))
+    }
+    
+  }
+  
+  beaconDefence () {
+    let beacon;
+    let conqured = this.defensibleBeacons.conqured();
+    if(conqured.length) { beacon = conqured.random() }
+    else { beacon = this.defensibleBeacons.random() }
+    if(!beacon){ return }
+    this.beacons.readyToSpawn.spawnUnits()
+    this.mobilizePlatoons();
+    
+    let unitsGroup = [
+        this.idlePlatoons
+      , this.idleSquads
+      , this.idleUnits].filter(group => group.length).first
+    let executor
+    if(!(unitsGroup && unitsGroup.length)){ return }
+    let startFrom = 0..random(5);
+        executor = unitsGroup
+          .sortByClosestTo(beacon)
+          .slice(startFrom,startFrom.random(10));
+          
+    if(!executor || executor.task){ return }
+    let task = new BeaconDefence(beacon,this,executor);
+    if(task.feasible){
+      executor.setTask(task);
+      executor.move(task.target)
+    }
+  }
+  
+  beaconConquest () {
+    if(this.platoons.length < W.beacons.length.random(W.beacons.length * 5).roundp()){
+        this.beacons.readyToSpawn.spawnUnits();
+        this.mobilizePlatoons();
+    }
+    
+    let executor = this.idleTaskForce();
+    if(!executor || executor.task){ return }
+    
+    let closest = this.conquerableBeacons
+        .filter(b => b.nearbyEnemies.length < executor.size)
+        .sortByClosestTo(executor);
         
-        if (DEBUG && this.currentDecision) {
-            if(this.currentDecision.beacon) { this.currentDecision.beacon.debug('#ff0000') }
-            R.fillStyle = '#fdfff1';
-            R.font = '14px "Calibri Light",system-ui';
-            R.textAlign = 'center';
-            if (this.currentDecision) {
-                fillText(this.currentDecision.label, this.unit.x, this.unit.y + 35);
-            }
-        }
-
-        if (this.subBehavior) {
-            this.subBehavior.render();
-        }
+    let beacon  = closest.at(executor,executor.visibilityRadius * 4).random();
+    if(!beacon) { beacon = closest.slice(0,3).random() }
+    if(!beacon) { return }
+    let task     = new BeaconConquest(beacon,this,executor);
+    if(task.feasible){
+       executor.setTask(task);
+       executor.move(beacon);
     }
-
-    reservedPosition() {
-        return this.subBehavior ? this.subBehavior.reservedPosition() : this.unit;
+  }
+  
+  cycle(t) {
+    // console.log(['I\'m awake...','Assuming direct control.'].join('\n'));
+    super.cycle(t);
+    if ((this.cacheTimer -= t) <= 0) {
+      this.cacheTimer = this.cacheInterval;
+      let retaken = W.beacons.filter(b => this.isHostile(b.controller) && b.previousController === this)
+      if(retaken.length){
+        this.conquerableBeacons = retaken } else {
+        this.conquerableBeacons = W.beacons.filter(b => this.isHostile(b.controller) );
+      }
     }
+    if ((this.cycleTimer -= t) <= 0) {
+      this.cycleTimer = this.cycleInterval;
+      
+      this.idlePlatoons = this.platoons.idle();
+      this.idleSquads   = this.squads.idle();
+      this.idleUnits    = this.units.idle();
+      
+      this.defensibleBeacons  = this.beacons.filter(b => b.nearbyEnemies.length > b.nearbyFriends.length );
+      if(this.platoons.length <= 128) {
+        if(this.defensibleBeacons.length ){this.beaconDefence()}
+        if(this.conquerableBeacons.length){this.beaconConquest()}
+      }
+    }
+  }
+  
+  postRender(t,ctx,c){
+    this.squads.forEach(squad => { squad.postRender(t,ctx,c)} )
+  }
+}
 
+class Nemesis extends AI {
+
+  constructor (cfg) {
+    super(cfg)
+    this.name                   = 'nemesis';
+    this.body                   = '#661040';
+    this.leg                    = '#191818';
+    this.head                   = '#daaaff';
+    this.beacon                 = '#ee61b1';
+    this.reinforcementsInterval = 15
+    
+  }
+  
+  cycle(){}
 }

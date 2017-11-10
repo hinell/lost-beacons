@@ -71,7 +71,6 @@ Array.prototype.each    = function (fn ,this_) {
   for (let i = 0; i < this.length; i++) {
     fn(this[i],i,this)
   }
-  
 };
 
 Array.prototype.remove = function(item) {
@@ -82,8 +81,58 @@ Array.prototype.remove = function(item) {
     }
 };
 
-Array.prototype.random = function () {
-    return pick(this)
+Array.prototype.random = function (length = 1) {
+  if(this.length <= 1){ return this[0]
+  } else {
+    if(typeof length !== 'number') { length = 0 };
+    if(length > 1){
+      let arr = new this.constructor();
+      while(length) {
+        let e = this.random();
+        if(arr.contains(e)){ arr.push(e) }
+        length--
+      }
+      return arr
+    }
+    return this[Math.round((0.0001).random(this.length - 1))]
+  }
+};
+
+Array.prototype.contains = function (elem,startIndex){
+  return !!~this.indexOf(elem,startIndex)
+}
+
+Array.prototype.extract = function (length,right) {
+  let method = right ? 'pop' : 'shift';
+  if(length <= 0) { return }
+  if(length > 0){
+    let arr = new this.constructor();
+    if(length >= this.length) {
+      this.forEach(e => arr.push(e));
+      this.length = 0;
+      return arr
+    }
+    while(arr.length < length) { arr.push(this[method]()) }
+    return arr
+  }
+  return this[method]()
+};
+
+Array.prototype.unique = function (){
+  return this.reduce((arr,e)=> {
+    !arr.contains(e) && arr.push(e); return arr
+  } ,new this.constructor)
+}
+
+Array.prototype.intersect = function (arr,fn){
+  let intersected = new this.constructor();
+  let condition   = fn || function (a,b){ return a === b }
+  for (let i = 0; i < this.length; i++) {
+    for (let j = 0; j < arr.length; j++) {
+      if(condition(this[i],arr[j])){ intersected.push(this[i]) }
+    }
+  }
+  return intersected
 }
 
 // TODO: REPLACE by Array.random
@@ -98,40 +147,48 @@ Object.defineProperties(Array.prototype,{
   last : { get(){ return this[this.length-1] }, configurable: true, enumerable: true}
 });
 
-class Iterable {
-  constructor (interable){
-      this.interable = interable
-  }
-  toArray(){
-  let a = [], kv;
-  while(!(kv = this.interable.next()).done) { a.push(kv.value) }
-  return a
-  }
-}
-
 Map.prototype._keys = Map.prototype.keys;
 Map.prototype.keys = function (array){
   if (!array) { return this._keys() }
-  return new Iterable(this._keys()).toArray()
+  let arr = [];
+  this.forEach(function (v,k){ arr.push(k) })
+  return arr
 }
 
 Map.prototype._values = Map.prototype.values;
-Map.prototype.values = function (array){
-  if (!array) { return this._values() }
-  return new Iterable(this._values()).toArray()
+Set.prototype._values = Set.prototype.values;
+Map.prototype.values =
+Set.prototype.values = function (array) {
+  if(!array) { return this._values() }
+  let arr = [];
+  this.forEach(v => arr.push(v));
+  return arr
 }
 
-Number.prototype.range = function(){
-  return this ? Array.apply(null, {length: this}).map((e,i) => i) : []
+Number.prototype.range = function(fn){
+  let arr = [];
+  if(fn){
+     for (let i = 0; i < this; i++) { arr.push(fn(i)) }
+  } else {
+    for (let i = 0; i < this; i++) { arr.push(i) }
+  }
+  return arr
 }
 
-Number.prototype.roundp = function(p = 2){ return ~~(this*Math.pow(10,p))/Math.pow(10,p) }
+Number.prototype.roundp = function(p = 0){ return ~~(this*Math.pow(10,p))/Math.pow(10,p) }
 
-Number.prototype.floorp = function (p = 1){ return ~~(this / p) * p; }
+// Returns the number A of the B that has no remainder if divided by precision number:
+// 153..clip(50) => 150, 279..clip(30) => 270
+// The function has to possible implementations: B - (B % P) and ~~(B/P) * P  =>  A
+// The latest is fastest
+// @param {Number} - p - Precision
+Number.prototype.clip = function (p = 1){ return ~~(this/p) * p }
 
 Number.prototype.isBetween = function(a,b){
     return (a <= this && this <= b) || (a >= this && this >= b)
 }
+
+Number.prototype.random = function (b = 0){return Math.random() * (((this + 0) || 1) - b) + b}
 
 class Canvas {constructor(){return document.createElement('canvas')}}
 
@@ -139,7 +196,7 @@ class Canvas {constructor(){return document.createElement('canvas')}}
 // @param h - canvas height
 // @param c - canvas context or callback
 // @param cb - callback called with context anc canvas parameters (context, canvas instance) =>
-// @return {HTMLCanvasElement} - return canvas
+// @return {HTMLCanvasElement} - return canvas or what ever callback returns
 HTMLCanvasElement.prototype.render = function(w,h,c,cb){
   this.width = w; this.height = h;
   if(c.call) {
@@ -171,4 +228,11 @@ function formatTime(t) {
     t = ~~t;
 
     return zeroes(~~(t / 60)) + ':' + zeroes(t % 60);
+}
+
+function perf (n,fn){
+    tt = performance.now();
+    let r = fn(n)
+    console.log(n,performance.now() - tt);
+    return r
 }

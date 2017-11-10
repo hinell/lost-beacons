@@ -1,7 +1,168 @@
-class Units extends Objects {
-    totalHealth(){ return this.reduce((total,u) => total+u.health,0) }
+class Behaviour {
+    constructor (){
+        this.cycleInterval  = 1;
+        this.cycleTimer     = 0;
+    }
+    attach(unit) {
+        this.unit = unit;
+    }
+    
+    cycle(e) {}
+  
+    render() {}
+
+    reservedPosition() { return {'x': this.unit.x, 'y': this.unit.y} }
+
 }
-class UnitsGroup extends Units {}
+
+class Idle extends Behaviour {}
+
+class Chase extends Behaviour {
+
+    constructor(target, position, radius = 20) {
+        super();
+        this.target     = target;
+        this.position   = position;
+        this.radius     = radius;
+    }
+
+    attach(unit) {
+        this.unit = unit;
+        this.updateSubBehavior();
+    }
+
+    updateSubBehavior() {
+
+        if (!this.target && !this.position) {
+            this.subBehavior = new Idle();
+            return
+        }
+        if (this.unit.distanceTo(this.target) < this.radius
+            && !W.hasObstacleBetween(this.unit, this.target)) {
+            // Target is visible, attack!
+            
+            this.subBehavior = new Idle();
+            
+            // Make sure we're focusing on this specific unit (to avoid having the unit auto-attack another target)
+            this.unit.target   = this.target;
+            this.unit.friendly = this.target.controller === this.unit.controller;
+        } else {
+            this.subBehavior = new Reach(this.target,this.position);
+            // TODO: If no position provided then Reach is too expensive for performance
+            this.position    = undefined; // if target moves then no need to keep this position
+        }
+        this.subBehavior.attach(this.unit);
+    }
+
+    cycle(e) {
+        super.cycle(e);
+        this.cycleTimer -= e;
+        if (this.cycleTimer <= 0) {
+            this.cycleTimer = this.cycleInterval;
+            this.updateSubBehavior();
+        }
+        if (this.subBehavior) this.subBehavior.cycle(e);
+
+    }
+
+    render() {
+        this.subBehavior.render();
+    }
+
+    reservedPosition() {
+        return this.subBehavior.reservedPosition();
+    }
+
+}
+
+class Reach extends Behaviour {
+
+    constructor(target,position) {
+        super();
+        this.position = position; // allows to hint the unit with position outside
+        this.target = target;
+    }
+
+    attach(unit) {
+        
+        this.unit = unit;
+        
+        // attempt to pick the first target position and construct path
+        if (!this.path) {
+          if(!this.position){
+            let units;
+            if(this.target instanceof Beacon && this.target.units.length ){
+              units = this.target.units
+            } else { units = W.units }
+            
+            this.position = units.sortByClosestTo(this.target)
+            .freeCirclePositions(this.target,this.unit.radius)
+            .filter(position => position.x !== this.target.x && position.y !== this.target.y )
+            .sort((a,b) => {
+              let visibleFromA = W.castRay(a,atan((this.target.y - a.y) / (this.target.x - a.x)),GRID_SIZE * 10) >= this.target.distanceTo(a);
+              let visibleFromB = W.castRay(a,atan((this.target.y - b.y) / (this.target.x - b.x)),GRID_SIZE * 10) >= this.target.distanceTo(b);
+              if (visibleFromA !== visibleFromB) {
+                return visibleFromA ? -1 : 1;
+              }
+            // Both positions can see the target, so let's just pick whichever one is closer
+            return this.target.distanceTo(a) - this.target.distanceTo(b);
+          })[0]
+          
+          }
+
+          this.position = this.position || this.target;
+          this.subBehavior && (this.subBehavior = new Idle());
+          this.path     = W.constructPath(this.unit, this.position, (position) => {
+          return new Object_(position).distanceTo(this.position) <= GRID_SIZE;
+          });
+          this.path     = this.path  || [this.target]; // if no path of previous call, then go to the target anyway
+        }
+        
+    }
+
+    cycle(e) {
+        if(this.path && !this.path.length) { return }
+        const nextPosition = this.path[0];
+        if (nextPosition) {
+            const distance = this.unit.distanceTo(nextPosition);
+
+            this.unit.moving = true;
+
+            if (distance > 0) {
+                // TODO: Here is the bug when unit is spawned on the map
+                this.unit.angle = atan2(nextPosition.y - this.unit.y, nextPosition.x - this.unit.x);
+
+                const appliedDistance = min(distance, this.unit.unitSpeed * e);
+                // move unit
+                this.unit.x += appliedDistance * cos(this.unit.angle);
+                this.unit.y += appliedDistance * sin(this.unit.angle);
+            } else {
+                this.path.shift();
+            }
+        }
+    }
+
+    render() {
+        if (DEBUG) {
+            super.render();
+        }
+        if (this.unit.controller instanceof Human) {
+            R.globalAlpha = 0.3;
+            beginPath();
+            R.strokeStyle = this.unit.controller.body;
+            R.lineWidth = 2;
+            moveTo(this.unit.x, this.unit.y);
+            this.path.forEach(step => step && lineTo(step.x, step.y));
+            stroke();
+        }
+    }
+
+    reservedPosition() {
+        const last = (this.path && this.path.length && this.path[this.path.length - 1]) || this.target;
+        return {'x': last.x, 'y': last.y};
+    }
+
+}
 
 const ALL_REPLIES   = [
             'our domination will last forever ... '
@@ -14,24 +175,24 @@ const ALL_REPLIES   = [
         ,   'keep going'
         ,   'well done'
         ,   'easy'
-        ]
+        ];
 
 class Unit extends Object_ {
     constructor(cfg = {}){
         super(cfg);
         // shooting settings
-        // 0.25/0.8 = x / 0.2
         this.damageAmount = cfg.damageAmount    || 0.125;
         this.shotInterval = cfg.shotInterval    || 0.4;
         this.attackRadius = cfg.attackRadius    || 200;
         this.shotTimer    = this.shotInterval;
-        
+      
         // health settings
         this.healingInterval = cfg.healingInterval  || 1.5
         this.healTimer       = this.healingInterval;
         this.healingAmount   = cfg.healingAmount    || 0.05
         this.healRadius      = cfg.healRadius       || 100;
         this.healthSize      = this.health = 1;
+        
         // motion settings
         this.unitSpeed    = cfg.unitSpeed || 150
         this.angularSpeed = cfg.angularSpeed || 0.1
@@ -40,13 +201,14 @@ class Unit extends Object_ {
         this.angleTurn    = Math.PI/180;
         this.moving       = false;
         
+        // TODO: Replace behaviour system by task system
         // tasks
-        this.tasks  = new Objects()
+        this.tasks      = new Objects();
+        this.task // current task
         this.setBehavior(new Idle());
         
         // entity settings
         this.radius           = cfg.radius || 20
-        this.visibilityRadius = Math.max(this.healRadius,this.attackRadius);
 
         // cycles
         this.cycleTimer    = this.cycleInterval = 1;
@@ -54,16 +216,22 @@ class Unit extends Object_ {
         this.cacheTimer    = 0; // fetch all units around immediately
         
         // beacons
-        this.beacon          = null // parental beacon, only available after spawn
-        this.conqueringSpeed = 0.1
-        this.nearbyUnits     = new Units(); // cached units
+        this.target          = null; // parental beacon, only available after spawn
+        this.conqueringSpeed = 0.1;
+        
+        // objects around
+        this.visibilityRadius   = Math.max(this.healRadius,this.attackRadius);
+        
+        this.nearbyUnits     = new Units();
         this.closestEnemies  = new Units();
         this.closestFriends  = new Units();
-        this.closestBeacon
+        this.closestBeacons
+        this.conquering      // currently conquered by this unit beacon
+        this.targetedBy      = new Units();
         
         // others settings
         this.indicator  = new Indicator(this);
-        this.controller = cfg.controller || cfg.team;
+        this.controller = cfg.controller; // set outside
         this.target;
         this.replies = cfg.replies || ALL_REPLIES
         
@@ -73,32 +241,51 @@ class Unit extends Object_ {
 
     get dps () { return this.health }
     
-    // TODO: Replace every this.team == u.team checks by this method
-    isFriendly (unit) { return this.controller === unit.controller }
+    // TODO: Replace every this.controller == u.controller checks by this method
+    isFriendly (unit) { return this.controller.isFriendly(unit.controller )}
     
-    isHostile  (unit) { return !this.isFriendly(unit) }
+    isHostile  (unit) { return this.controller.isHostile(unit.controller ) }
     
-    get dead() { return !this.health; }
+    // @return {Boolean}
+    get isDead() { return !this.health; }
     
+    get healthCap(){ return this.healthSize }
+    
+    get alive(){ return this }
+    
+    // @return {String}
     get name() {  return (this.constructor._name || this.constructor.name).toLocaleLowerCase() }
-
+    
+    // @return {Boolean}
+    get isUnderAttack() { return !!this.targetedBy.length }
+    
+    // @return {Units}
+    get enemiesAttacking(){ return this.targetedBy }
+    
+    // @return {Unit}
+    get isEngaged(){ return this.firing }
+    
+    // @return {Boolean}
+    get isWeak(){ return this.health < this.healthSize }
+    
+    // @return {Units}
+    get enemiesAround(){ return this.closestEnemies }
+    
+    // @return {Boolean}
+    get isMoving(){ return this.moving }
+    
+    get size(){ return 1 }
+    
     hurt(amount) {
         if ((this.health -= amount) < 0.01) {
             this.health = 0;
         }
-        if (this.target) {
-          if (this.target.controller === this.controller) {
-            this.indicator.indicate('engaging enemy!',PLAYER_TEAM.beacon)
-          } else {
-            this.target.indicator.indicate('unit under attack!',ENEMY_TEAM.beacon);
-          }
-          
-        }
-
+        
+        this.controller.indicate(this.target,'unit under attack!','#a8211c');
+        
         let particles = 1;
         
-        if (this.dead) {
-            W.remove(this);
+        if (this.isDead) {
             particles = 20;
 
             let k = 20;
@@ -128,13 +315,7 @@ class Unit extends Object_ {
             ]);
         }
     }
-
-    heal(amount) {
-        if (!this.dead) {
-            this.health = min(this.healthSize, this.health + amount);
-        }
-    }
-    
+  
     enemyInRange() {
         // this.collection = currentMapSector
         return this.closestEnemies
@@ -143,27 +324,32 @@ class Unit extends Object_ {
             [0];
     }
     
+    heal(amount) {
+        if (!this.isDead) {
+            this.health = min(this.healthSize, this.health + amount);
+        }
+    }
+    
     closestWeakFriend() {
       return this.closestFriends
         .at(this, this.healRadius)
-        .filter(u => u.health < u.healthSize)
+        .filter(u => u.isWeak)
         .filter(unit => !W.hasObstacleBetween(this, unit))
-        .closestTo(this)
+        .sortByClosestTo(this)
         [0];
     }
-
-    cycle(e) {
-
+    
+    cycle(t) {
+    
         this.moving = false;
-        this.behaviour.cycle(e);
-
-        if ((this.cacheTimer-= e) <= 0) {
-            this.cacheTimer     = this.cacheInterval
-            this.closestBeacon  = W.beacons.closestTo(this)[0];
-            this.nearbyUnits    = this.closestBeacon && this.closestBeacon.units.at(this,this.attackRadius);
+        this.behaviour && this.behaviour.cycle(t);
+        
+        if ((this.cacheTimer-= t) <= 0) {
+            this.cacheTimer     = this.cacheInterval;
+            this.closestBeacons = W.beacons.sortByClosestTo(this);
+            this.nearbyUnits    = this.closestBeacons.first && this.closestBeacons.first.units.at(this,this.attackRadius);
             if(!this.nearbyUnits || !this.nearbyUnits.length){ this.nearbyUnits = W.units.at(this,this.attackRadius) };
-          
-            // TODO: Optimize filtering
+            
             let filtered        = this.nearbyUnits.filter(this.isFriendly,true,this);
             this.closestFriends = filtered[0];
             this.closestEnemies = filtered[1];
@@ -173,34 +359,37 @@ class Unit extends Object_ {
         if (this.moving) { return }
         
         // main cycle
-        if ((this.cycleTimer-= e) <= 0 && !this.target ) {
+        if ((this.cycleTimer-= t) <= 0) {
+     
             this.cycleTimer = this.cycleInterval;
              // the next target to be slaughtered or healed
-            this.target     = this.enemyInRange() || this.closestWeakFriend()
+             // TODO: Move this automatic behaviour into a separate module for task system
+            if(!this.target){
+                this.target = this.enemyInRange() || this.closestWeakFriend()
+            }
         }
-
         if (this.target === this) { this.target = undefined; return }
         if(!this.target) { return }
-        // TODO: Probably here is a bug. If no behaviour is set the without having target behaviour is almost unpredictable
+        // TODO: Probably here is a bug. If no behaviour is set without having automatic  target behaviour is almost unpredictable
         // TODO: It should know nothing about Behavior instances
-        if(this.distanceTo(this.target) > this.visibilityRadius && this.behaviour instanceof Idle) {
-            return this.target = undefined;
+        if((this.distanceTo(this.target) > this.visibilityRadius) && this.behaviour instanceof Idle) {
+            this.target = undefined;
+            return
         }
+      
         
-        if (this.target) { this.angle = this.angleTo(this.target) }
+        this.angle = this.angleTo(this.target)
         
-        this.friendly = this.target.controller === this.controller;
-        
-        if (this.friendly
-            && (this.healTimer-= e) <= 0
+        if (this.target && this.isFriendly(this.target)
+            && (this.healTimer-= t) <= 0
             && !W.hasObstacleBetween(this,this.target)) {
             this.healTimer = this.healingInterval;
             
-            if (this.target && this.target.dead
-                || this.target.health >= this.target.healthSize
+            if (this.target && this.target.isDead
+                || this.target.health >= this.target.healthCap
                 || this.distanceTo(this.target) > this.healRadius) {
                 // stop healing, target is already at full health (and allows us to start shooting at another target)
-                this.target = undefined;
+                this.target  = undefined;
                 this.healing = false
             }
             else {
@@ -222,7 +411,7 @@ class Unit extends Object_ {
 
                 W.add(p, RENDERABLE);
 
-                interp(p, 'progress', 0, 1, this.distanceTo(this.target) / 100, 0, null, () => {
+                interp(p,'progress',0,1, this.distanceTo(this.target) / 100,0,null,() => {
                     target.heal(this.healingAmount);
                     W.remove(p);
                 });
@@ -230,13 +419,14 @@ class Unit extends Object_ {
 
         }
         
-        if (!this.friendly && (this.shotTimer -= e) <= 0
+        if (this.target && this.isHostile(this.target) && (this.shotTimer -= t) <= 0
             && !W.hasObstacleBetween(this,this.target)) {
-            this.shotTimer = rand(this.shotInterval - 0.2, this.shotInterval);
+            this.shotTimer = (this.shotInterval - 0.2).random(this.shotInterval);
             
-            if ((this.target && this.target.dead)
+            if ((this.target && this.target.isDead)
             || this.distanceTo(this.target) > this.attackRadius ) {
-                this.target = undefined;
+                this.target.targetedBy = new Units();
+                this.target = void 0;
                 this.firing = false
             } else {
                 this.firing = true;
@@ -264,18 +454,20 @@ class Unit extends Object_ {
                 };
                 W.add(rays,RENDERABLE);
                 interp(rays,'alpha',0.5,0,0.1,0,null,() => W.remove(rays));
-                this.target.hurt(this.damageAmount);
+                !~this.target.targetedBy.indexOf(this) && this.target.targetedBy.push(this);
+                this.target.hurt(this.damageAmount,this);
+                this.controller.indicate(this.target,'engaging enemy!',this.controller.beacon)
             }
 
         }
     }
 
     render() {
-        
-        wrap(() => this.behaviour.render());
-        
+        // TODO: Remove behaviour rendering
+        this.behaviour && wrap(() => this.behaviour.render());
+        let xx ,yy;
         wrap(() => {
-            translate(this.x.floorp(GRID_SIZE), this.y.floorp(GRID_SIZE));
+            translate(xx = this.x.clip(GRID_SIZE),yy = this.y.clip(GRID_SIZE));
             // color of tales on the map
             R.globalAlpha = 0.1;
             R.fillStyle = this.controller.body;
@@ -362,22 +554,58 @@ class Unit extends Object_ {
             currentHealthGauge,
             HEALTH_GAUGE_HEIGHT
         );
-
+        // TODO: Move this out of the unit's render scope
         if (this.isSelected()) {
             R.fillStyle = '#fff';
             squareFocus(SELECTED_EFFECT_RADIUS, SELECTED_EFFECT_SIZE);
         }
     }
-
+    
+    setTask(task){ this.task = task }
+    
+    // behaviour
     setBehavior(b) {
         this.behaviour = b;
         this.behaviour.attach(this);
     }
-
-    isSelected() {
-        return G.selectionCursor.units.indexOf(this) >= 0;
+    
+    // motion
+    move(position, sector){
+        if(!position){ return };
+    let notTheSamePosition, notWithinRadius;
+        notTheSamePosition   = this.behaviour && this.behaviour.beacon !== position;
+        notWithinRadius     = this.distanceTo(position) >= this.radius;
+        if(notTheSamePosition || notWithinRadius) {
+          this.setBehavior(new Reach(position,position))
+        }
+      return this
     }
+    
+    stop(){
+      this.moving = false;
+      this.setBehavior(new Idle())
+    };
+    
+    // misceleneous
+    isSelected() {
+        // TODO: Move this out of the unit's render scope
+        return G.selectionCursor.units.length && G.selectionCursor.units.indexOf(this) >= 0;
+    }
+    
+    retreatPosition() {
+        const positions = [];
+        for (let i = 0 ; i < 8 ; i++) {
+            const a = (i / 10) * Math.PI2;
+            let position = {
+                'x': this.x + Math.cos(a) * this.radius,
+                'y': this.y + Math.sin(a) * this.radius
+                }
+            W.pointInObstacle(position) || W.isOut(position.x,position.y) || positions.push();
+        }
 
+        // Return a position that is available and not close to any enemy
+        return new Object_(positions.random());
+    }
 }
 Unit._name = 'uni'
 
@@ -426,3 +654,82 @@ class Mechanic extends Unit {}
 class Shield extends Unit {}
 class Disintegrator extends Unit {}
 class Conqueror extends Unit {}
+class Devastator extends Unit {}
+
+class Harbinger extends Unit {
+  constructor (cfg) {
+    super(cfg)
+    this.replies = [
+            'I am assuming control of this form'
+        ,   'Direct intervention is necessary'
+        ,   'I AM ASSUMING DIRECT CONTROL'
+        ,   'I was waiting too long ...'
+        ]
+  }
+}
+Harbinger._name = 'Harbinger';
+
+
+class Units extends Objects {
+    //@return {Number}
+    get health(){ return this.reduce((total,unit) => total+unit.health,0) }
+    
+    //@return {Number}
+    get healthCap(){ return this.reduce((total,unit) => total+unit.healthCap,0) }
+    
+    // @return {Boolean}
+    get isEngaged(){ return this.some(unit => unit.isEngaged)}
+    
+    // @return {Boolean}
+    get isUnderAttack(){ return this.some(unit => unit.isUnderAttack)}
+    
+    // @return {Units}
+    get enemiesAttacking(){
+        return this.reduce((enemies, unit) => {
+        if(unit.isUnderAttack) { unit.enemiesAttacking.forEach(enemy => {
+            if(!enemies.contains(enemy)){ enemies.push(enemy) }
+        })}
+        return enemies
+        }, new Units())
+    }
+    
+    // Check enemiesAroundSize before using this moethod
+    // @return {Units}
+    get enemiesAround(){
+        return this.reduce((enemies,unit) => {
+            unit.enemiesAround.forEach(enemy => {
+                if(!enemies.contains(enemy)){ enemies.push(enemy) }
+            })
+            return enemies
+        },new this.constructor)
+    }
+    
+    // @return {Boolean}
+    get isMoving(){return !!this.length && this.every(unit => unit.isMoving)}
+    
+    // @return {Boolean}
+    get isDead(){ return !this.length || this.every(u => u.isDead) }
+  
+    // @return {Untis} - filtered
+    get alive(){ return this.filter(u => !u.isDead) }
+  
+    // @return {Number}
+    get size(){ return this.reduce((size, units) => size+units.size, 0) }
+    
+    get visibilityRadius(){
+      if(!this.length){ return 0 }
+      let r = this.random().visibilityRadius;
+      return r
+    }
+  
+    move(freePositions, obstacles){
+      let unit;
+      freePositions.forEach((position,i) => {
+         unit = this[i];
+         if(unit !== undefined) { unit.move(position) }
+      });
+      return freePositions
+    }
+    
+    stop(){this.forEach(u => u.stop())}
+}

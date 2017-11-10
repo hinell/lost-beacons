@@ -15,10 +15,12 @@ class Game {
         G.levelId = 2; // // TODO: BUG, if setting to 1 renders NO space for beacons positioning
         G.MINIMAP_SCALE = MINIMAP_SCALE;
         MINIMAP_SCALE   = G.MINIMAP_SCALE + (.01 / (1 + Math.pow(1.5,(-6 + G.levelId))) )
-        // G.launch(TestWorld); // creates the world
-        G.launch(MenuWorld); // creates the world
+        G.launch(TestWorld); // creates the world
+        // G.launch(MenuWorld); // creates the world
         // G.launch(GameplayWorld); // creates the world
-      
+        // G.mainAudio = new Audio('E:\\Backup\\music\\SoundCloud\\2017\\Galactic Neighborhood SEPTEMBER. 2017\\DesuExSounds - Ad astra per alas fideles.m4a')
+        // G.mainAudio.play()
+        
         // Main loop, starting point, entry point
         let pts = 0; // previous timestamp
         let frame = (ts) => {
@@ -67,16 +69,17 @@ class Game {
         p = new Object_(p);
 
         // Reset cursor
+        // TODO: Optimize
         const unit = W.units.filter(unit => {
             return p.distanceTo(unit) < unit.radius;
-        }).closestTo(p)[0];
+        }).sortByClosestTo(p)[0];
 
         let newCursor;
 
         if (G.cursor === G.selectionCursor && G.selectionCursor.downPosition || !G.selectionCursor.units.length) {
             newCursor = G.selectionCursor;
         } else if (unit && (G.selectionCursor.units.length > 1 || G.selectionCursor.units[0] !== unit)) {
-            newCursor = unit.controller === PLAYER_TEAM ? G.healCursor : G.attackCursor;
+            newCursor = unit.controller instanceof Human ? G.healCursor : G.attackCursor;
             newCursor.setTarget(unit);
         } else if (G.selectionCursor.units.length) {
             newCursor = G.reachCursor;

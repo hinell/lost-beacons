@@ -7,42 +7,56 @@ class GameplayWorld extends World {
         const cols = 20 + G.levelId * 10;
 
         W.matrix = generate(rows, cols, false);
-       
+        this.controllers = [
+              this.human    = new Human()
+            , this.ai       = new AI()
+            , this.nemesis  = new Nemesis()
+        ];
         
-        W.symSquad(
-            GRID_SIZE * (GRID_EMPTY_PADDING / 2 + GRID_OBSTACLE_PADDING + 2),
-            GRID_SIZE * (GRID_EMPTY_PADDING / 2 + GRID_OBSTACLE_PADDING + 2),
-            3
-        );
-
-        W.symSquad(
-            GRID_SIZE * (GRID_EMPTY_PADDING / 2 + GRID_OBSTACLE_PADDING + 5),
-            GRID_SIZE * (GRID_EMPTY_PADDING / 2 + GRID_OBSTACLE_PADDING + 2),
-            3
-        );
-
-        W.symSquad(
-            GRID_SIZE * (GRID_EMPTY_PADDING / 2 + GRID_OBSTACLE_PADDING + 8),
-            GRID_SIZE * (GRID_EMPTY_PADDING / 2 + GRID_OBSTACLE_PADDING + 2),
-            3
-        );
+        // set up enemies
+        this.controllers.forEach((c,i,a) => {
+            this.controllers.forEach(cc => {
+                if(cc !== c){ c.addEnemy(cc) }
+            })
+        });
         
+       [[2,2],[5,2],[8,2]].forEach(([x,y]) => {
+           this.symSquad(
+                GRID_SIZE * (GRID_EMPTY_PADDING / 2 + GRID_OBSTACLE_PADDING + x),
+                GRID_SIZE * (GRID_EMPTY_PADDING / 2 + GRID_OBSTACLE_PADDING + y),
+                3..range().map(u => {
+                    u = new Unit();
+                    this.human.control(u);
+                    return u
+                }),
+                3..range().map(u => {
+                    u = new Unit();
+                    this.ai.control(u);
+                    return u
+                })
+            );
+       });
 
         // Main central beacon
         
-    let centralBeacon                    = window.centralBeacon = new Beacon();
-        centralBeacon.Unit               = pick([Killer,Destructor]);
+    let centralBeacon                    = new Beacon();
+        centralBeacon.Unit               = [Killer,Destructor].random();
         
         centralBeacon.reinforcementsSize = 10;
         centralBeacon.spawnInterval      = 10;
-        centralBeacon.controller         = NEMESIS_TEAM;
         centralBeacon.conquerRadius      = BEACON_CONQUER_RADIUS * 1.5;
         centralBeacon.x = W.center.x;
         centralBeacon.y = W.center.y;
         w.centralBeacon = centralBeacon
+        this.nemesis.control(centralBeacon);
         // W.hasObstacleBetween(W.center.x-25,W.center.x+25)
         // W.hasObstacleBetween(W.center.y-25,W.center.y+25)
-        W.spawnSquad(centralBeacon,W.createSquad(NEMESIS_TEAM, G.levelId*6,Killer),NEMESIS_TEAM);
+        this.spawnSquad(centralBeacon,(G.levelId*6).range().map(() => {
+            let unit = new Killer();
+            this.nemesis.control(unit);
+            return unit
+        }))
+        
         W.centralBeacon = centralBeacon;
         
         let beaconsQntty = (~~(rows * cols * 0.005));
@@ -68,11 +82,11 @@ class GameplayWorld extends World {
             
         this.endGameCondition = {cycle: function () {
                
-                let playerUnits = W.units.filter(unit => unit.controller === PLAYER_TEAM).length;
-                let enemyUnits = W.units.filter(unit => (unit.controller === ENEMY_TEAM || unit.controller === NEMESIS_TEAM )).length;
+                let playerUnits = W.units.filter(unit => unit.controller === this.human).length;
+                let enemyUnits = W.units.filter(unit => (unit.controller === this.ai || unit.controller === this.nemesis )).length;
                 
-                let playerBeacons = W.beacons.filter(beacon => beacon.controller === PLAYER_TEAM).length;
-                let enemyBeacons = W.beacons.filter(beacon => (beacon.controller === ENEMY_TEAM || beacon.controller === NEMESIS_TEAM)).length;
+                let playerBeacons = W.beacons.filter(beacon => beacon.controller === this.human).length;
+                let enemyBeacons = W.beacons.filter(beacon => (beacon.controller === this.ai || beacon.controller === this.nemesis)).length;
 
                 // End if someone captured all beacons OR if the player is completely dead
                 let noPlayerUnitsLeft = !playerUnits;
@@ -109,13 +123,15 @@ class GameplayWorld extends World {
     }
 
     // Spawns squads for each team at opposite sides of the map
-    symSquad(x, y, size, Unit) {
-      
-        let playerSquad = W.createSquad(PLAYER_TEAM,size,Unit);
-        let enemySquad  = W.createSquad(ENEMY_TEAM,size,Unit);
-            W.spawnSquad({x,y}, playerSquad);
-            W.spawnSquad({x: W.width - x,y: W.height - y,enemySquad}, enemySquad);
-      
+    symSquad(x, y, units1, units2) {
+            this.spawnSquad({x,y}, units1);
+            this.spawnSquad({x: W.width - x,y: W.height - y}, units2);
+    }
+    
+    cycle(t){
+        super.cycle(t);
+        this.controllers.forEach(c => c.cycle(t));
+    
     }
     
     render(t,ctx,c) {

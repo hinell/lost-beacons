@@ -1,10 +1,11 @@
-OBJECT_POSITION_IS_MISSING = new Error('Invalid argument: position {x,y} is missing!')
+TARGET_MISSING = new Error('Invalid argument: target object or position is missing');
 class Object_ {
     constructor (cfg = {}) {
       // first things first
-      this.x          = cfg.x || 0;
-      this.y          = cfg.y || 0;
-      this.collection = [];
+      this.x      = cfg.x || 0;
+      this.y      = cfg.y || 0;
+      this.radius =
+      this.r      =  cfg.r || 0; // radius
     }
     
     angleTo(targetObj) {
@@ -12,15 +13,35 @@ class Object_ {
     }
     
     distanceTo(position){
-      if(!position || position.x === undefined || position.y === undefined ) { throw OBJECT_POSITION_IS_MISSING }
+      if(position instanceof Objects) { position = position.random()  }
+      if(!position || position.x === undefined || position.y === undefined ) { throw TARGET_MISSING }
       return Math.hypot(this.y - position.y,this.x - position.x)
     }
     
 }
+
 class Objects extends Array {
   constructor(arr){
     super()
-    if(arr instanceof Array) { this.splice.apply(this, [this.length,0].concat(arr)) }
+    this.initialize(arr);
+  }
+  
+  initialize (arr) {if (arr instanceof Array && arr.length) { arr.forEach(e => this.push(e),this) }}
+  
+  get coord(){
+    // most distant to the left and to the right
+   let lx = this.sort((a,b) => a.x - b.x).first.x;
+   let rx = this.sort((a,b) => b.x - a.x).first.x;
+  
+    // most distant to the top and to the bottom
+   let by = this.sort((a,b) => b.y - a.y).first.y;
+   let ty = this.sort((a,b) => a.y - b.y).first.y;
+   
+   let x = ((lx+rx)/2).roundp();
+   let y = ((ty+by)/2).roundp();
+   // let r = Math.abs(Math.max(rx-lx,by-ty))
+   let r = (Math.abs(Math.hypot(by-ty,rx-lx))/2).roundp()
+   return new Object_({x,y,r})
   }
   
   // Highly efficient version of filter, allows to avoid doubling filtering the same array
@@ -38,16 +59,46 @@ class Objects extends Array {
      return passed
   }
   
-  closestTo(targetPos){
-    return this
-    .filter(currentObj => currentObj !== targetPos )
-    .sort((a, b) => targetPos.distanceTo(a) - targetPos.distanceTo(b))
+  // @param target - target position
+  // @param precise - Time consumable option.
+  // It uses calculation of central between all objects inside
+  // current instance by sot that use it very carefully.
+  distanceTo(target, precise = false){
+    if(!this.length) { return Infinity }
+    if(target instanceof Objects){
+      if(precise) { target = target.coord }
+      else { target = target.random() }
+    }
+    if(!target.distanceTo) { target = new Object(target) }
+    if(precise) {return this.coord.distanceTo(target,precise)}
+    return this.random().distanceTo(target,precise)
+  }
+  
+  //@return {Objects}
+  sortByClosestTo(target, inclusive = true){
+    if(!this.length){ return this }
+    if(target instanceof Objects){ target = target.random() }
+    if(!target) { return this }
+    let objects = this.sort((a,b) => target.distanceTo(a) - target.distanceTo(b));
+    if(inclusive) { objects = objects.filter(currentObj => currentObj !== target) }
+    return objects
   }
 
-  at(targetPos,radius = GRID_SIZE){
-        return this.filter(obj => targetPos.distanceTo(obj) < radius )
+  // @param target {Object} - {x,y}
+  // @param radius
+  // @param callback - called immediately if target is in radius range
+  at(targetPos,radius = GRID_SIZE, cb){
+    if(!targetPos){throw TARGET_MISSING}
+    if(cb) {
+      return this.filter((obj,i,arr) => {
+        let cond = targetPos.distanceTo(obj) < radius
+          if(cond) { cb(obj,i,arr) }
+        return cond
+      })
+    }
+    return this.filter(obj => targetPos.distanceTo(obj) < radius )
   }
-  // TODO: Move to Objects, create checking available position
+  
   // finds available positions around
   freeSingleCirclePositions(startPosition, distBetweenPos = 5, offSetCenter /* distant from center */, startAngle = 0) {
       // if offSetCenter is not provided then only available
@@ -66,7 +117,8 @@ class Objects extends Array {
               x : startPosition.x + cos(angle) * offSetCenter,
               y : startPosition.y + sin(angle) * offSetCenter
           });
-          // // TODO: Extra things, should be outside
+          // TODO: Extra things, should be outside
+          // TODO: Too expensive to use
           !W.hasObstacle(position.x, position.y, distBetweenPos / 2)
           && this.every(reservedPos => { return reservedPos.distanceTo(position) > distBetweenPos; })
           && positions.push(position)
