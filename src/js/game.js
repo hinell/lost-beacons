@@ -10,14 +10,14 @@ class Game {
         G.attackCursor    = new AttackCursor(this.canvas);
         G.reachCursor     = new ReachCursor(this.canvas);
         G.healCursor      = new HealCursor(this.canvas);
-        
+        this.viewport     = new Camera();
         G.t = 0;
         G.levelId = 2; // // TODO: BUG, if setting to 1 renders NO space for beacons positioning
         G.MINIMAP_SCALE = MINIMAP_SCALE;
         MINIMAP_SCALE   = G.MINIMAP_SCALE + (.01 / (1 + Math.pow(1.5,(-6 + G.levelId))) )
-        G.launch(TestWorld); // creates the world
-        // G.launch(MenuWorld); // creates the world
+        G.launch(MenuWorld); // creates the world
         // G.launch(GameplayWorld); // creates the world
+        // G.launch(TestWorld); // creates the world
         // G.mainAudio = new Audio('E:\\Backup\\music\\SoundCloud\\2017\\Galactic Neighborhood SEPTEMBER. 2017\\DesuExSounds - Ad astra per alas fideles.m4a')
         // G.mainAudio.play()
         
@@ -37,7 +37,6 @@ class Game {
     }
 
     launch(worldType) {
-        this.viewport = new Camera();
         new worldType(this.viewport); // instantiate world
     }
     // main cycle

@@ -1,12 +1,14 @@
 CAMERA_SPEED =  800;
+CURSOR_MOVE_CAMERA_MARGIN =  50;
 
 class Camera extends Object_ {
     
     constructor() {
-        super()
+        super();
         V = this; // bad practice
+        this.cursorInViewport = true;
     }
-
+    
     cycle(e) {
         const p = {'x': 0, 'y': 0};
         // control by keyboard
@@ -14,21 +16,22 @@ class Camera extends Object_ {
         if (w.down[39] || w.down[68]) { p.x = 1; }
         if (w.down[38] || w.down[87] || w.down[90]) { p.y = -1; }
         if (w.down[40] || w.down[83]) { p.y = 1; }
-        
-        
-        const xOnMap = (MOUSE_POSITION.x - (CANVAS_WIDTH - G.minimapWidth - MINIMAP_MARGIN)) / G.minimapWidth;
-        const yOnMap = (MOUSE_POSITION.y - (CANVAS_HEIGHT - G.minimapHeight - MINIMAP_MARGIN)) / G.minimapHeight;
-        if (!xOnMap.isBetween(0, 1) || !yOnMap.isBetween(0, 1)) {
-            const xBetween = MOUSE_POSITION.x.isBetween(CURSOR_MOVE_CAMERA_MARGIN, CANVAS_WIDTH - CURSOR_MOVE_CAMERA_MARGIN);
-            const yBetween = MOUSE_POSITION.y.isBetween(CURSOR_MOVE_CAMERA_MARGIN, CANVAS_HEIGHT - CURSOR_MOVE_CAMERA_MARGIN);
+      
+        if (this.cursorInViewport) {
+          const xOnMap = (MOUSE_POSITION.x - (CANVAS_WIDTH - G.minimapWidth - MINIMAP_MARGIN)) / G.minimapWidth;
+          const yOnMap = (MOUSE_POSITION.y - (CANVAS_HEIGHT - G.minimapHeight - MINIMAP_MARGIN)) / G.minimapHeight;
+          if (!xOnMap.isBetween(0,1) || !yOnMap.isBetween(0,1)) {
+            const xBetween = MOUSE_POSITION.x.isBetween(CURSOR_MOVE_CAMERA_MARGIN,CANVAS_WIDTH - CURSOR_MOVE_CAMERA_MARGIN);
+            const yBetween = MOUSE_POSITION.y.isBetween(CURSOR_MOVE_CAMERA_MARGIN,CANVAS_HEIGHT - CURSOR_MOVE_CAMERA_MARGIN);
             if (!xBetween || !yBetween) {
-                if (!xBetween) {
-                    p.x = MOUSE_POSITION.x > CANVAS_WIDTH / 2 ? 1 : -1;
-                }
-                if (!yBetween) {
-                    p.y = MOUSE_POSITION.y > CANVAS_HEIGHT / 2 ? 1 : -1;
-                }
+              if (!xBetween) {
+                p.x = MOUSE_POSITION.x > CANVAS_WIDTH / 2 ? 1 : -1;
+              }
+              if (!yBetween) {
+                p.y = MOUSE_POSITION.y > CANVAS_HEIGHT / 2 ? 1 : -1;
+              }
             }
+          }
         }
 
         if (p.x || p.y) {
