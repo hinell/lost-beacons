@@ -11,6 +11,7 @@ class Game {
         G.reachCursor     = new ReachCursor(this.canvas);
         G.healCursor      = new HealCursor(this.canvas);
         this.viewport     = new Camera();
+        this.viewport.contacts = document.getElementById('contacts');
         G.t = 0;
         G.levelId = 2; // // TODO: BUG, if setting to 1 renders NO space for beacons positioning
         G.MINIMAP_SCALE = MINIMAP_SCALE;
@@ -37,7 +38,8 @@ class Game {
     }
 
     launch(worldType) {
-        new worldType(this.viewport); // instantiate world
+        this.world = new worldType(this.viewport); // instantiate world
+        this.viewport.contacts.style.display = this.world instanceof MenuWorld ? '' : 'none'
     }
     // main cycle
     cycle(t) {
