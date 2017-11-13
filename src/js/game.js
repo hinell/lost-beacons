@@ -29,7 +29,6 @@ class Game {
                 e = ~~(e*10000)/10000;
                 pts = ts;   // assign current timestamp
                 G.cycle(e); // Main game loop
-                
                 // setTimeout(function (){ requestAnimationnFrame(frame); },10)
                 requestAnimationFrame(frame)
             if(DEBUG){ G.fps = ~~(1 / e); }

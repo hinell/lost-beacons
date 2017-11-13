@@ -16,7 +16,6 @@ body{
     overflow-y : hidden;
 }
 
-
 .container {
     display: flex;
     justify-content : center;
@@ -64,4 +63,10 @@ canvas{
 @keyframes fadeOut {
     from { transform: rotateX(1.72rad); opacity: 0 }
     to   { transform: rotateX(0rad); opacity: 1 }
+}
+
+
+.old-browser-hint {
+    color: white
+
 }

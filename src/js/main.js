@@ -30,6 +30,7 @@ onload = () => {
     });
 
     onresize();
+    initMouse();
     new Game({renderingContext: R, canvas: C});
 };
 

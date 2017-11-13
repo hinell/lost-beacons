@@ -15,15 +15,15 @@ class Cursor extends Object_ {
             if(this.styleCursor) {
                 this.elem.style['cursor'] = this.styleCursor
             } else {
-                this.pointer.preRender(url => { this.styleCursor = this.elem.style['cursor'] = `url(${url}) -1 -1, not-allowed` })
+                this.preRendered = this.pointer.preRender(url => {
+                    var cursorStyle = url ? `url(${url}) -1 -1, not-allowed` : 'default';
+                    this.styleCursor = this.elem.style['cursor'] = cursorStyle
+                })
             }
-            
         }
     }
     
-    postRender(t,ctx,c) {
-    
-    }
+    postRender(t,ctx,c) {}
 
     down(p) {
         this.downPosition = p;
@@ -113,7 +113,7 @@ class DefaultPointer {
         if(this.url) { return cb(this.url,this.image,this) }
         this.canvas = new Canvas()
             .render(20,20,ctx => new DefaultPointer().postRender(0,ctx) );
-            
+        if(!this.canvas.toBlob){ return cb() }
         this.canvas.toBlob((blob) => {
             let image = new Image();
                 image.width  = this.canvas.width;
@@ -122,7 +122,6 @@ class DefaultPointer {
                 this.image = image;
             cb(this.url,image,this)
         },'image/png');
-    
     }
     
     postRender(t,ctx) {

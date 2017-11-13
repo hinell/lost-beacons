@@ -13,7 +13,13 @@ class TimeData {
     }
 
     static timeForLevelIndex(levelId) {
-        return localStorage['_' + levelId] || 0;
+      var time;
+      try {
+        time = localStorage['_' + levelId] || 0;
+      } catch (e) {
+        time = 0;
+      }
+      return time
     }
 
 }

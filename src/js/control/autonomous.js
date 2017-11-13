@@ -74,7 +74,7 @@ class AI extends Controller {
   constructor (cfg) {
     super(cfg);
     this.name = 'Old machine';
-    this.reinforcementsInterval = 15;
+    this.reinforcementsInterval = 18;
     
     this.style.head   = '#850000',
     this.style.body   = '#ac0404',
@@ -84,10 +84,10 @@ class AI extends Controller {
     Object.assign(this,this.style);
     
     // timings
-    this.cycleInterval = 2;
+    this.cycleInterval = 3;
     this.cycleTimer    = 0; // cycle immediately
     
-    this.cacheInterval = 4;
+    this.cacheInterval = 6;
     this.cacheTimer    = 0;
     
     // targets for tasks

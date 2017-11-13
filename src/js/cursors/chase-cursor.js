@@ -6,7 +6,7 @@ class ChaseCursor extends Cursor {
         this.target // only set when the unit is selected
     }
     
-    postRender() {
+    postRender(t,ctx) {
         const s = 1 - (G.t % CHASE_CURSOR_PERIOD) / CHASE_CURSOR_PERIOD;
 
         translate(this.target.x,this.target.y);
