@@ -2,7 +2,7 @@
 
 Remake of the original Lost Beacons game that participated in 2017 js13kGames competition [here](http://2017.js13kgames.com/).
 <br>I've smoothed some corners and added a few features. 
-
+<a title="Buy me a cup of coffee!" href="https://www.paypal.me/biteofpie"><img src="https://raw.githubusercontent.com/aha999/DonateButtons/master/Paypal.png" width="20%" align="right"></img></a>
 ## GAME IMPROVEMENTS
 [gf]: #game-features
 Here is a short list of improvements made to the game:
